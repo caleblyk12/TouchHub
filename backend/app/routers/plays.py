@@ -21,10 +21,10 @@ router = APIRouter(prefix="/plays", tags=["Plays"])
 #response_model fails without orm_mode because pydantic cannot validate orm objects by default
 
 #list of orm objects is then changed to dict, validated, filtered, and serialized to list of json for frontend
-@router.get("/", response_model=list[schemas.PlayOut])
-def read_plays(db: Session = Depends(get_db)):
-    return crud.get_all_plays(db)
 
+@router.get("/", response_model=list[schemas.PlayOut])
+def read_plays(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_plays(db, skip=skip, limit=limit)
 
 
 @router.get("/{play_id}", response_model=schemas.PlayOut)
@@ -39,6 +39,7 @@ def read_play(play_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=schemas.PlayOut)
 def create_new_play(play: schemas.PlayCreate, db: Session = Depends(get_db)):
     return crud.create_play(db, play)
+
 
 
 

@@ -1,13 +1,26 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
+### Users --------------------------------------------------------------------------------------------
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+
+class UserCreate(UserBase):
+    password: str #only appear in create, NOT in userOut response to hide pw
+
+class UserOut(UserBase):
+    id: int #attach id so frontend knows what to do
+    class Config:
+        from_attributes = True
+
+### Plays --------------------------------------------------------------------------------------------
 class PlayBase(BaseModel):
     title: str
-    description: str
+    description: str | None = None
 
 class PlayCreate(PlayBase):
-    #inherits from playbase. Later can add attributes like
-    #is_private: bool = False
     #this is for post requests (request body validation)
+    owner_id: int #not in playBase because we dont want put requests to change owner id
     pass
 
 class PlayUpdate(PlayBase):
@@ -24,9 +37,11 @@ class PlayOut(PlayBase):
     #sql/sqlalchemy auto creates running ids as pkey 
     #when returning, we return this id tgther with the data
     id: int
+    owner_id: int
 
     #This class config allows auto changing of ORM table into JSON for frontend
     #we dont need it for put or post because FE gives us json, and we use that json to create table
     #but when returning response, its faster if we can just return orm object from our query
     class Config:
-        orm_mode = True  # Allows returning SQLAlchemy objects directly
+        from_attributes = True  # Allows returning SQLAlchemy objects directly
+

@@ -1,20 +1,53 @@
 #encapsulates db operations from our endpoints in routers folder
+#most of these CRUD operations create ORM objects using models, add them to db, and return them as ORM
+#the endpoints in routers then use response_model to let pydantic validate the models as python dicts, 
+#then filter for relevant fields and return serialized JSON
 from sqlalchemy.orm import Session
+from passlib.context import CryptContext
 from . import models, schemas
 
 
 
-def get_all_plays(db: Session):
+### Users --------------------------------------------------------------------------------------------------
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def get_password_hash(password: str):
+    print(f"Password repr: {repr(password)} Length in bytes: {len(password.encode('utf-8'))}")
+    return pwd_context.hash(password)
+
+
+def create_user(db: Session, user: schemas.UserCreate):
+    hashed_pw = get_password_hash(user.password)
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_pw
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+
+def get_users(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+def get_user_by_id(db: Session, usid: int):
+    return db.query(models.User).filter(models.User.id == usid).first()
+
+### Plays --------------------------------------------------------------------------------------------------
+
+def get_plays(db: Session, skip: int = 0, limit: int = 100):
     #this returns a list of sqlalchemy ORM objects (the actual play), not dicts, not json.
     #it needs to be validated by pydantic using orm_mode=true which allows pydantic to extract the fields as a dict
     #it then needs to be serialized to json using response_model, which filters fields and returns json
-    return db.query(models.Play).all()
+    return db.query(models.Play).offset(skip).limit(limit).all()
 
 
 
 def get_play_by_id(db: Session, play_id: int):
     return db.query(models.Play).filter(models.Play.id == play_id).first()
-
 
 
 def create_play(db: Session, play: schemas.PlayCreate):

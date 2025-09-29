@@ -1,6 +1,8 @@
-fastapi
-uvicorn
-sqlalchemy
-pydantic
-passlib[bcrypt]
-pyjwt
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.32
+pydantic==2.9.2
+pydantic[email]==2.9.2
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+PyJWT==2.9.0
