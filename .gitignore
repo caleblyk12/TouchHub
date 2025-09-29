@@ -1,0 +1,21 @@
+# Ignore virtual environment
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+
+# SQLite database
+*.db
+
+# Environment variables
+.env
+
+# Node/React (future frontend)
+node_modules/
+dist/
+build/
+
+# OS-specific
+.DS_Store
