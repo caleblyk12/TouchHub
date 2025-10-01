@@ -7,9 +7,13 @@ from ..database import get_db
 router = APIRouter(prefix="/users", tags=["users"])
 
 
+
 @router.post("/", response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    if crud.get_user_by_username(db, user.username):  # prevent duplicate
+        raise HTTPException(status_code=400, detail="Username already taken")
     return crud.create_user(db=db, user=user)
+
 
 
 @router.get("/", response_model=list[schemas.UserOut])

@@ -1,8 +1,9 @@
 #routes for /plays, using functions from crud file
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .. import crud, schemas
 from ..database import get_db
+from ..auth import get_current_user  
 
 
 router = APIRouter(prefix="/plays", tags=["Plays"])
@@ -27,6 +28,7 @@ def read_plays(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_plays(db, skip=skip, limit=limit)
 
 
+
 @router.get("/{play_id}", response_model=schemas.PlayOut)
 def read_play(play_id: int, db: Session = Depends(get_db)):
     play = crud.get_play_by_id(db, play_id)
@@ -36,27 +38,49 @@ def read_play(play_id: int, db: Session = Depends(get_db)):
 
 
 
+
 @router.post("/", response_model=schemas.PlayOut)
-def create_new_play(play: schemas.PlayCreate, db: Session = Depends(get_db)):
-    return crud.create_play(db, play)
+def create_new_play(
+    play: schemas.PlayCreate,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    return crud.create_play(db, play, owner_id=current_user.id)
+
+
 
 
 
 
 @router.put("/{play_id}", response_model=schemas.PlayOut)
-def update_existing_play(play_id: int, play: schemas.PlayUpdate, db: Session = Depends(get_db)):
-    updated_play = crud.update_play(db, play_id, play)
-    if not updated_play:
+def update_existing_play(
+    play_id: int, #frontend passes this
+    play: schemas.PlayUpdate, #frontend passes as JSON request body
+    db: Session = Depends(get_db), #backend will pass to you
+    current_user = Depends(get_current_user), #backend will read header token from request, return user
+):
+    existing = crud.get_play_by_id(db, play_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Play not found")
-    return updated_play
+    if existing.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your play")
+    return crud.update_play(db, play_id, play)
+
 
 
 
 #no need response model, since we are returning a python dict which fastAPI converts to json automatically
 #compared to pydantic validation and filtration whcih we need response_model to trigger
 @router.delete("/{play_id}")
-def delete_existing_play(play_id: int, db: Session = Depends(get_db)):
-    deleted_play = crud.delete_play(db, play_id)
-    if not deleted_play:
+def delete_existing_play(
+    play_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    existing = crud.get_play_by_id(db, play_id)
+    if not existing:
         raise HTTPException(status_code=404, detail="Play not found")
+    if existing.owner_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your play")
+    crud.delete_play(db, play_id)
     return {"message": "Play deleted successfully"}

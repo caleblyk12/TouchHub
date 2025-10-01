@@ -1,4 +1,16 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
+
+
+
+### Auth Tokens --------------------------------------------------------------------------------------
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
+
 
 ### Users --------------------------------------------------------------------------------------------
 class UserBase(BaseModel):
@@ -20,7 +32,6 @@ class PlayBase(BaseModel):
 
 class PlayCreate(PlayBase):
     #this is for post requests (request body validation)
-    owner_id: int #not in playBase because we dont want put requests to change owner id
     pass
 
 class PlayUpdate(PlayBase):
