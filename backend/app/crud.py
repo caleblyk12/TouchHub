@@ -35,6 +35,10 @@ def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
 
 
+def get_user_by_email(db: Session, email: str):
+    return db.query(models.User).filter(models.User.email == email).first()
+
+
 
 ### Plays --------------------------------------------------------------------------------------------------
 
@@ -51,7 +55,7 @@ def get_play_by_id(db: Session, play_id: int):
 
 
 #for create_play, we attach owner_id as an exrta argument instead of adding it to playCreate schema
-#this is so we attach id server side, since we alr know the exact user making the request via token payload.sub
+#this is so we attach id server side (BE), since we alr know the exact user making the request via token payload.sub
 def create_play(db: Session, play: schemas.PlayCreate, owner_id: int):  
     #model_dump changes the pydantic model instance to a python dict {"title": "x", "Desc": "y"}
     #** then changes the dict to keyword args {title="x" desc="y"} which is what sqlalchemy reads
@@ -65,11 +69,14 @@ def create_play(db: Session, play: schemas.PlayCreate, owner_id: int):
 
 
 
+
 def update_play(db: Session, play_id: int, play_update: schemas.PlayUpdate):
     play = get_play_by_id(db, play_id)
     if play:
         play.title = play_update.title
         play.description = play_update.description
+        play.frame_data = play_update.frame_data
+        play.is_private = play_update.is_private
         #all the above changes are tracked changes, since the current play object has diff attributes from
         #its db counterpart. When you call commit, all these tracked changes are synced up.
         db.commit()

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
 
 
@@ -12,23 +12,52 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
+
 ### Users --------------------------------------------------------------------------------------------
 class UserBase(BaseModel):
     username: str
-    email: EmailStr
+
+
 
 class UserCreate(UserBase):
     password: str #only appear in create, NOT in userOut response to hide pw
+    email: EmailStr
+    
 
 class UserOut(UserBase):
     id: int #attach id so frontend knows what to do
     class Config:
         from_attributes = True
 
+
+
+### Whiteboard ---------------------------------------------------------------------------------------
+class Piece(BaseModel):
+    id: int                          # unique per piece within a frame
+    type: str                        # e.g. "player", "ball", "cone", "zone"
+    color: str                       # for team colour or role
+    x: float                         # coordinate on pitch (percentage or pixels)
+    y: float
+    #Potential futue stuff (optional for now)
+    rotation: Optional[float] = 0.0  # direction facing (degrees) (good for corner/shut posture)
+    size: Optional[float] = 1.0      # scale factor for drawing
+    label: Optional[str] = None      # optional text like "A", "Wing", "Def"
+    opacity: Optional[float] = 1.0   # for ghosting or highlighting
+
+
+class Frame(BaseModel):
+    frame_number: int
+    duration: Optional[float] = 1.0     # seconds each frame lasts in animation (default 1s)
+    pieces: List[Piece]                 # pieces in that frame
+
+
+
 ### Plays --------------------------------------------------------------------------------------------
 class PlayBase(BaseModel):
     title: str
     description: str | None = None
+    frame_data: Optional[List[Frame]] = None  # validated list of frames
+    is_private: bool = False
 
 class PlayCreate(PlayBase):
     #this is for post requests (request body validation)

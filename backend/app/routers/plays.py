@@ -1,7 +1,8 @@
 #routes for /plays, using functions from crud file
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from .. import crud, schemas
+
+from .. import crud, schemas, models
 from ..database import get_db
 from ..auth import get_current_user  
 
@@ -23,17 +24,49 @@ router = APIRouter(prefix="/plays", tags=["Plays"])
 
 #list of orm objects is then changed to dict, validated, filtered, and serialized to list of json for frontend
 
+@router.get("/me", response_model=list[schemas.PlayOut])
+def read_my_plays(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    """Return all plays owned by the current logged-in user."""
+    return (
+        db.query(models.Play)
+        .filter(models.Play.owner_id == current_user.id)
+        .order_by(models.Play.created_at.desc()) #descending order, so new plays show first
+        .all()
+    )
+
+
+@router.get("/community", response_model=list[schemas.PlayOut])
+def read_public_plays(db: Session = Depends(get_db)):
+    """Return all public (non-private) plays for community browsing."""
+    return (
+        db.query(models.Play)
+        .filter(models.Play.is_private == False)
+        .order_by(models.Play.created_at.desc())
+        .all()
+    )
+
+
+"""
 @router.get("/", response_model=list[schemas.PlayOut])
 def read_plays(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    #Return all plays in the db (for admin purposes)
     return crud.get_plays(db, skip=skip, limit=limit)
-
+"""
 
 
 @router.get("/{play_id}", response_model=schemas.PlayOut)
-def read_play(play_id: int, db: Session = Depends(get_db)):
+def read_play(
+    play_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
     play = crud.get_play_by_id(db, play_id)
     if not play:
         raise HTTPException(status_code=404, detail="Play not found")
+
+    if play.is_private and play.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Play is private")
+
     return play
 
 

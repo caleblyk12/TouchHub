@@ -18,8 +18,10 @@ from . import crud, schemas
 load_dotenv()
 
 SECRET_KEY = os.getenv("TOUCHHUB_SECRET")
+if not SECRET_KEY:
+    raise RuntimeError("TOUCHHUB_SECRET is not set")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 
 # --- OAuth2 bearer scheme ---
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
