@@ -1,9 +1,17 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const toggleMenu = () => setMenuOpen(!menuOpen);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
 
   return (
     <nav className="bg-white shadow-md px-4 py-3">
@@ -28,30 +36,62 @@ export default function Navbar() {
         </button>
 
         {/* Desktop links */}
-        <div className="hidden sm:flex space-x-6">
+        <div className="hidden sm:flex items-center gap-6">
           <NavLink to="/home" label="Home" />
-          <NavLink to="/plays/me" label="My Plays" />
           <NavLink to="/plays/community" label="Community" />
+
+          {user ? (
+            <>
+              <NavLink to="/plays/me" label="My Plays" />
+              <span className="text-gray-600">Hi, <b>{user.username}</b></span>
+              <button
+                onClick={handleLogout}
+                className="text-red-600 font-medium hover:underline"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" label="Login" />
+              <NavLink to="/register" label="Register" />
+            </>
+          )}
         </div>
       </div>
 
       {/* Mobile dropdown */}
       <div
         className={`${
-          menuOpen ? "max-h-40 opacity-100 mt-3" : "max-h-0 opacity-0"
+          menuOpen ? "max-h-60 opacity-100 mt-3" : "max-h-0 opacity-0"
         } overflow-hidden transition-all duration-300 sm:hidden`}
       >
         <div className="flex flex-col space-y-2 border-t border-gray-200 pt-3">
           <NavLink to="/home" label="Home" onClick={() => setMenuOpen(false)} />
-          <NavLink to="/plays/me" label="My Plays" onClick={() => setMenuOpen(false)} />
           <NavLink to="/plays/community" label="Community" onClick={() => setMenuOpen(false)} />
+
+          {user ? (
+            <>
+              <NavLink to="/plays/me" label="My Plays" onClick={() => setMenuOpen(false)} />
+              <button
+                onClick={() => { setMenuOpen(false); handleLogout(); }}
+                className="text-left text-red-600 font-medium"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" label="Login" onClick={() => setMenuOpen(false)} />
+              <NavLink to="/register" label="Register" onClick={() => setMenuOpen(false)} />
+            </>
+          )}
         </div>
       </div>
     </nav>
   );
 }
 
-/* Reusable link component */
 function NavLink({ to, label, onClick }) {
   return (
     <Link
