@@ -1,3 +1,4 @@
+// src/pages/EditPlay.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
@@ -39,11 +40,15 @@ export default function EditPlay() {
     })();
   }, [id, navigate]);
 
+  /** Logic for advancing frames during playback. Plays once from first to last frame. */
   useEffect(() => {
     if (!isPlaying || frames.length <= 1) return;
-    // play once from first to last frame
-    setIdx(0);
+    
+    // FIX: Always reset to frame 0 (index 0) immediately when playback starts
+    setIdx(0); 
     let i = 0;
+    
+    // Set up the interval for frame transitions
     const t = setInterval(() => {
       i += 1;
       if (i >= frames.length) {
@@ -56,26 +61,76 @@ export default function EditPlay() {
     return () => clearInterval(t);
   }, [isPlaying, frames.length, secondsPerFrame]);
 
+  // Current frame's piece data for display
   const pieces = useMemo(() => frames[idx]?.pieces ?? [], [frames, idx]);
 
-  function setPieces(updater) {
+  /** * Target positions for smooth animation: positions of the *next* frame.
+   * This is the key for smooth animation.
+   */
+  const targetPositionsById = useMemo(() => {
+    if (!isPlaying || frames.length < 2) return null;
+    const nextIdx = idx + 1;
+
+    // Stop animation when the next frame is the end of the array
+    if (nextIdx >= frames.length) return null; 
+
+    const nextFramePieces = frames[nextIdx]?.pieces ?? [];
+    return nextFramePieces.reduce((acc, p) => {
+      acc[p.id] = { x: p.x, y: p.y };
+      return acc;
+    }, {});
+  }, [isPlaying, frames, idx]);
+
+
+  /**
+   * Adds a new piece to ALL frames at its initial position (0.5, 0.5).
+   */
+  function addPiece(kind) {
+    const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
+    const type = kind === "ball" ? "ball" : "player";
+    const newObj = { 
+        // Ensure ID is an integer to satisfy Pydantic schema
+        id: Math.round(Date.now() + Math.random()), 
+        type, 
+        color, 
+        x: 0.5, 
+        y: 0.5, 
+        rotation: 0,
+        size: 1,
+        label: null,
+        opacity: 1,
+    };
+
+    setFrames((prev) => {
+      const newFrames = structuredClone(prev); 
+
+      newFrames.forEach(frame => {
+          // Push a deep copy of the new piece to every frame's pieces list
+          frame.pieces.push(structuredClone(newObj)); 
+      });
+
+      return newFrames;
+    });
+  }
+  
+  /**
+   * Handler for drag event from WhiteboardCanvas. Updates position for piece ID in current frame.
+   */
+  function onPiecePositionChange(id, x, y) {
     setFrames((prev) => {
       const copy = structuredClone(prev);
-      const arr = typeof updater === "function" ? updater(copy[idx].pieces) : updater;
-      copy[idx].pieces = arr;
+      const pieceToUpdate = copy[idx].pieces.find(p => p.id === id);
+      if (pieceToUpdate) {
+        pieceToUpdate.x = x;
+        pieceToUpdate.y = y;
+      }
       return copy;
     });
   }
 
-  function addPiece(kind) {
-    const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
-    const type = kind === "ball" ? "ball" : "player";
-    const newObj = { id: Date.now() + Math.random(), type, color, x: 0.5, y: 0.5 };
-    setPieces((prev) => [...prev, newObj]);
-  }
-
   function addFrame(copyCurrent = true) {
     setFrames((prev) => {
+      // structuredClone ensures a deep copy of the previous frame's pieces
       const base = copyCurrent ? structuredClone(prev[idx]) : { frame_number: prev.length + 1, pieces: [] };
       const newFrame = { frame_number: prev.length + 1, pieces: base.pieces ?? [] };
       return [...prev, newFrame];
@@ -135,21 +190,33 @@ export default function EditPlay() {
 
       <WhiteboardCanvas
         pieces={pieces}
-        setPieces={setPieces}
-        targetPositionsById={null}
+        onPositionChange={onPositionChange}
+        targetPositionsById={targetPositionsById} // Pass the next frame for animation
         frameDurationSec={secondsPerFrame}
       />
 
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button onClick={prevFrame} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">◀ Prev</button>
+          <button 
+            onClick={prevFrame} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying}
+          >
+            ◀ Prev
+          </button>
           <div className="px-3 py-2 rounded-lg bg-gray-100 text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
-          <button onClick={nextFrame} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Next ▶</button>
+          <button 
+            onClick={nextFrame} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying}
+          >
+            Next ▶
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
           <button onClick={() => addFrame(true)} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">+ New Frame (copy)</button>
-          <button onClick={deleteFrame} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Delete Frame</button>
+          <button onClick={deleteFrame} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700" disabled={frames.length === 1}>Delete Frame</button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -166,6 +233,7 @@ export default function EditPlay() {
             className="border rounded-lg px-2 py-1"
             value={secondsPerFrame}
             onChange={(e) => setSecondsPerFrame(Number(e.target.value))}
+            disabled={isPlaying}
           >
             <option value={0.25}>0.25</option>
             <option value={0.5}>0.5</option>

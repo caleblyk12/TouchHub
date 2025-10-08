@@ -1,3 +1,4 @@
+// src/pages/PlayDetails.jsx
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
@@ -35,11 +36,15 @@ export default function PlayDetails() {
     })();
   }, [id, navigate]);
 
+  /** Logic for advancing frames during playback. Plays once from first to last frame. */
   useEffect(() => {
     if (!isPlaying || frames.length <= 1) return;
-    // start from frame 0 and play once to the end
+    
+    // FIX: Always reset to frame 0 (index 0) immediately when playback starts
     setIdx(0);
     let i = 0;
+    
+    // Set up the interval for frame transitions
     const t = setInterval(() => {
       i += 1;
       if (i >= frames.length) {
@@ -54,6 +59,24 @@ export default function PlayDetails() {
 
   const pieces = useMemo(() => frames[idx]?.pieces ?? [], [frames, idx]);
 
+  /** * Target positions for smooth animation: positions of the *next* frame.
+   * This enables smooth animation on the details page.
+   */
+  const targetPositionsById = useMemo(() => {
+    if (!isPlaying || frames.length < 2) return null;
+    const nextIdx = idx + 1;
+
+    // Stop animation when the next frame is the end of the array
+    if (nextIdx >= frames.length) return null; 
+
+    const nextFramePieces = frames[nextIdx]?.pieces ?? [];
+    return nextFramePieces.reduce((acc, p) => {
+      acc[p.id] = { x: p.x, y: p.y };
+      return acc;
+    }, {});
+  }, [isPlaying, frames, idx]);
+
+
   if (!loaded) return <div className="text-center text-gray-500 mt-10">Loading…</div>;
 
   return (
@@ -62,16 +85,28 @@ export default function PlayDetails() {
 
       <WhiteboardCanvas
         pieces={pieces}
-        setPieces={() => {}}
-        targetPositionsById={null}
+        // Read-only, so no onPositionChange prop is passed
+        targetPositionsById={targetPositionsById} // Enables smooth animation
         frameDurationSec={secondsPerFrame}
       />
 
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button onClick={() => setIdx((i) => (i - 1 + frames.length) % frames.length)} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">◀ Prev</button>
+          <button 
+            onClick={() => setIdx((i) => (i - 1 + frames.length) % frames.length)} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying} // Disable manual nav during playback
+          >
+            ◀ Prev
+          </button>
           <div className="px-3 py-2 rounded-lg bg-gray-100 text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
-          <button onClick={() => setIdx((i) => (i + 1) % frames.length)} className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Next ▶</button>
+          <button 
+            onClick={() => setIdx((i) => (i + 1) % frames.length)} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying} // Disable manual nav during playback
+          >
+            Next ▶
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -87,6 +122,7 @@ export default function PlayDetails() {
             className="border rounded-lg px-2 py-1"
             value={secondsPerFrame}
             onChange={(e) => setSecondsPerFrame(Number(e.target.value))}
+            disabled={isPlaying} // Disable changing speed during playback
           >
             <option value={0.25}>0.25</option>
             <option value={0.5}>0.5</option>

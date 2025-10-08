@@ -1,4 +1,5 @@
 // src/components/FrameControls.jsx
+// This component is no longer used, as its logic has been integrated into CreatePlay and EditPlay.jsx.
 export default function FrameControls({ isPlaying, setIsPlaying, playbackSpeed, setPlaybackSpeed }) {
   return (
     <div className="flex flex-wrap gap-3 justify-center mt-6">

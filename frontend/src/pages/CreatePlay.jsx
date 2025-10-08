@@ -1,265 +1,217 @@
-import { useEffect, useState } from "react";
+// src/pages/CreatePlay.jsx
+import { useMemo, useState, useEffect } from "react";
 import WhiteboardCanvas from "../components/WhiteboardCanvas";
+import ObjectButton from "../components/ObjectButton";
+import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
 export default function CreatePlay() {
-  const [frames, setFrames] = useState([{ id: 1, positions: {} }]);
-  const [frameIndex, setFrameIndex] = useState(0);
-  const [pieces, setPieces] = useState([]);
+  const navigate = useNavigate();
+  const [title, setTitle] = useState("Untitled Play");
+
+  const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
+  const [idx, setIdx] = useState(0);
+
   const [isPlaying, setIsPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const [secondsPerFrame, setSecondsPerFrame] = useState(1);
 
-  // Ensure the current frame has a snapshot for all pieces (no leakage via fallback)
-  useEffect(() => {
-    if (isPlaying) return;
-    setFrames((prev) => {
-      const copy = [...prev];
-      const current = copy[frameIndex] || { id: frameIndex + 1, positions: {} };
-      const positions = { ...(current.positions || {}) };
-      let changed = false;
-      for (const p of pieces) {
-        if (!positions[p.id]) {
-          positions[p.id] = { x: p.x, y: p.y };
-          changed = true;
-        }
-      }
-      if (changed) copy[frameIndex] = { id: frameIndex + 1, positions };
-      return copy;
-    });
-  }, [pieces, frameIndex, isPlaying]);
+  // Current frame's piece data for display
+  const pieces = useMemo(() => frames[idx]?.pieces ?? [], [frames, idx]);
 
-  /** play once from first → last frame; animate from current to next */
+  /** Logic for advancing frames during playback. Plays once from first to last frame. */
   useEffect(() => {
-    if (!isPlaying || frames.length < 2) return;
+    if (!isPlaying || frames.length <= 1) return;
+    
+    // FIX: Always reset to frame 0 (index 0) immediately when playback starts
+    setIdx(0); 
     let i = 0;
-    setFrameIndex(0);
-    // ensure starting pose matches frame 0
-    const f0 = frames[0]?.positions || {};
-    setPieces((prev) => prev.map((p) => (f0[p.id] ? { ...p, x: f0[p.id].x, y: f0[p.id].y } : p)));
-
-    const timer = setInterval(() => {
-      i++;
-      // landed on frame i
+    
+    // Set up the interval for frame transitions
+    const t = setInterval(() => {
+      i += 1;
       if (i >= frames.length) {
-        clearInterval(timer);
+        clearInterval(t);
         setIsPlaying(false);
         return;
       }
-      setFrameIndex(i);
-      const fx = frames[i]?.positions || {};
-      setPieces((prev) => prev.map((p) => (fx[p.id] ? { ...p, x: fx[p.id].x, y: fx[p.id].y } : p)));
+      setIdx(i);
+    }, secondsPerFrame * 1000);
+    return () => clearInterval(t);
+  }, [isPlaying, frames.length, secondsPerFrame]); // isPlaying is the dependency that triggers start/stop
 
-      if (i >= frames.length - 1) {
-        // last frame; next tick would stop
-        clearInterval(timer);
-        setIsPlaying(false);
-      }
-    }, speed * 1000);
-    return () => clearInterval(timer);
-  }, [isPlaying, speed, frames]);
+  /** * Target positions for smooth animation: positions of the *next* frame.
+   */
+  const targetPositionsById = useMemo(() => {
+    if (!isPlaying || frames.length < 2) return null;
+    const nextIdx = idx + 1;
 
-  /** when not playing, switching frames should immediately reflect that frame's snapshot */
-  useEffect(() => {
-    if (isPlaying) return;
-    const pos = frames[frameIndex]?.positions || {};
-    setPieces((prev) => prev.map((p) => (pos[p.id] ? { ...p, x: pos[p.id].x, y: pos[p.id].y } : p)));
-  }, [frameIndex, isPlaying, frames]);
+    if (nextIdx >= frames.length) return null; 
 
+    const nextFramePieces = frames[nextIdx]?.pieces ?? [];
+    return nextFramePieces.reduce((acc, p) => {
+      acc[p.id] = { x: p.x, y: p.y };
+      return acc;
+    }, {});
+  }, [isPlaying, frames, idx]);
+
+  /**
+   * Adds a new piece to ALL frames at its initial position (0.5, 0.5).
+   */
   function addPiece(kind) {
-    const newPiece = {
-      id: Date.now(),
-      type: kind === "ball" ? "ball" : "player",
-      color: kind,
-      x: 0.5,
-      y: 0.5,
+    const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
+    const type = kind === "ball" ? "ball" : "player";
+    const newObj = { 
+        // Ensure ID is an integer to satisfy Pydantic schema
+        id: Math.round(Date.now() + Math.random()), 
+        type, 
+        color, 
+        x: 0.5, 
+        y: 0.5, 
+        rotation: 0,
+        size: 1,
+        label: null,
+        opacity: 1,
     };
-    setPieces((prev) => [...prev, newPiece]);
-    // ensure every frame has a position for this piece to avoid fallback leakage
-    setFrames((prev) => prev.map((f, i) => {
-      const positions = { ...(f.positions || {}) };
-      if (positions[newPiece.id] == null) {
-        // copy from current frame if available, otherwise use newPiece default
-        const base = (prev[frameIndex]?.positions?.[newPiece.id]) || { x: newPiece.x, y: newPiece.y };
-        positions[newPiece.id] = { x: base.x, y: base.y };
+
+    setFrames((prev) => {
+      const newFrames = structuredClone(prev); 
+
+      newFrames.forEach(frame => {
+          frame.pieces.push(structuredClone(newObj)); 
+      });
+
+      return newFrames;
+    });
+  }
+
+  /**
+   * Handler for drag event from WhiteboardCanvas. Updates position for piece ID in current frame.
+   */
+  function onPiecePositionChange(id, x, y) {
+    setFrames((prev) => {
+      const copy = structuredClone(prev);
+      const pieceToUpdate = copy[idx].pieces.find(p => p.id === id);
+      if (pieceToUpdate) {
+        pieceToUpdate.x = x;
+        pieceToUpdate.y = y;
       }
-      return { id: i + 1, positions };
-    }));
-  }
-
-  /** snapshot current positions into current frame */
-  function saveFrame() {
-    const snap = {};
-    pieces.forEach((p) => (snap[p.id] = { x: p.x, y: p.y }));
-    setFrames((prev) => {
-      const copy = [...prev];
-      copy[frameIndex] = { id: frameIndex + 1, positions: snap };
       return copy;
     });
   }
 
-  function newFrame() {
-    saveFrame();
-    const clone = JSON.parse(JSON.stringify(frames[frameIndex]));
-    setFrames((prev) => [...prev, clone]);
-    setFrameIndex(frames.length);
-  }
-
-  /** move to a specific frame index and sync piece positions */
-  function goToFrame(nextIdx) {
-    // snapshot current before leaving
-    const snap = {};
-    pieces.forEach((p) => (snap[p.id] = { x: p.x, y: p.y }));
+  /** Adds a new frame, copying all pieces/positions from the current frame. */
+  function addFrame(copyCurrent = true) {
     setFrames((prev) => {
-      const copy = [...prev];
-      copy[frameIndex] = { id: frameIndex + 1, positions: snap };
-      return copy;
+      const base = copyCurrent ? structuredClone(prev[idx]) : { frame_number: prev.length + 1, pieces: [] };
+      const newFrame = { frame_number: prev.length + 1, pieces: base.pieces ?? [] };
+      return [...prev, newFrame];
     });
-
-    setFrameIndex(nextIdx);
-
-    const targetPositions = frames[nextIdx]?.positions || {};
-    setPieces((prev) =>
-      prev.map((p) => {
-        const pos = targetPositions[p.id];
-        return pos ? { ...p, x: pos.x, y: pos.y } : p;
-      })
-    );
+    setIdx((i) => i + 1);
   }
 
-  function prevFrame() {
-    const nextIdx = (frameIndex - 1 + frames.length) % frames.length;
-    goToFrame(nextIdx);
+  /** Deletes the current frame, maintaining at least one frame. */
+  function deleteFrame() {
+    setFrames((prev) => {
+      if (prev.length === 1) return prev;
+      const next = prev.slice();
+      next.splice(idx, 1);
+      next.forEach((f, i) => (f.frame_number = i + 1));
+      return next;
+    });
+    setIdx((i) => Math.max(0, i - 1));
   }
 
-  function nextFrame() {
-    const nextIdx = (frameIndex + 1) % frames.length;
-    goToFrame(nextIdx);
-  }
+  function prevFrame() { setIdx((i) => (i - 1 + frames.length) % frames.length); }
+  function nextFrame() { setIdx((i) => (i + 1) % frames.length); }
+
 
   async function handleSave() {
     const payload = {
-      title: "My play",
+      title: title || "Untitled Play",
+      description: "Created in whiteboard",
       frame_data: frames.map((f, i) => ({
         frame_number: i + 1,
-        duration: speed,
-        pieces: pieces.map((p) => ({
-          id: p.id,
-          type: p.type,
-          color: p.color ?? p.team,
-          x: f.positions[p.id]?.x ?? p.x,
-          y: f.positions[p.id]?.y ?? p.y,
-          rotation: 0,
-          size: 1,
-          label: null,
-          opacity: 1,
-        })),
+        duration: secondsPerFrame,
+        pieces: f.pieces,
       })),
       is_private: false,
-      description: "",
     };
-    await api.post("/plays/", payload);
+    try {
+        await api.post("/plays/", payload);
+        navigate("/plays/me");
+    } catch (error) {
+        alert("Failed to save play. Please try again.");
+    }
   }
 
-  // while playing, animate toward next frame's positions
-  const playingFrame = isPlaying ? (frames[frameIndex + 1]?.positions || null) : null;
-
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-4">
-      <div className="flex gap-2 flex-wrap justify-center">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={() => addPiece("team1")}
-        >
-          + Team1
-        </button>
-        <button
-          className="bg-red-600 text-white px-4 py-2 rounded"
-          onClick={() => addPiece("team2")}
-        >
-          + Team2
-        </button>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded"
-          onClick={() => addPiece("team3")}
-        >
-          + Team3
-        </button>
-        <button
-          className="bg-yellow-500 px-4 py-2 rounded"
-          onClick={() => addPiece("ball")}
-        >
-          + Ball
-        </button>
+    <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
+      <h2 className="text-3xl font-bold mb-6 text-blue-700">Create New Play</h2>
+      
+      <input
+        type="text"
+        placeholder="Play title…"
+        className="border rounded-lg w-full p-3 mb-4 text-lg focus:ring-2 focus:ring-blue-500"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+      />
+
+      <div className="grid grid-cols-2 sm:flex gap-3 mb-4">
+        <ObjectButton color="blue" label="Add Team 1 Player" onClick={() => addPiece("team1")} />
+        <ObjectButton color="red" label="Add Team 2 Player" onClick={() => addPiece("team2")} />
+        <ObjectButton color="green" label="Add Team 3 Player" onClick={() => addPiece("team3")} />
+        <ObjectButton color="yellow" label="Add Ball" onClick={() => addPiece("ball")} />
       </div>
 
       <WhiteboardCanvas
         pieces={pieces}
-        setPieces={setPieces}
-        targetPositionsById={playingFrame}
-        frameDurationSec={speed}
-        onPositionChange={(id, x, y) => {
-          // persist into current frame snapshot immediately
-          setFrames((prev) => {
-            const copy = [...prev];
-            const current = copy[frameIndex] || { id: frameIndex + 1, positions: {} };
-            const positions = { ...(current.positions || {}) };
-            positions[id] = { x, y };
-            copy[frameIndex] = { id: frameIndex + 1, positions };
-            return copy;
-          });
-        }}
+        onPositionChange={onPiecePositionChange}
+        targetPositionsById={targetPositionsById}
+        frameDurationSec={secondsPerFrame}
       />
 
-      <div className="flex flex-col gap-3 items-center">
+      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Frame Navigation */}
         <div className="flex items-center gap-2">
-          <button
-            className="px-3 py-2 rounded bg-gray-200"
-            onClick={prevFrame}
+          <button 
+            onClick={prevFrame} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying}
           >
             ◀ Prev
           </button>
-          <div className="px-3 py-2 bg-gray-100 rounded text-sm">
-            Frame <b>{frameIndex + 1}</b> / {frames.length}
-          </div>
-          <button
-            className="px-3 py-2 rounded bg-gray-200"
-            onClick={nextFrame}
+          <div className="px-3 py-2 rounded-lg bg-gray-100 text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
+          <button 
+            onClick={nextFrame} 
+            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            disabled={isPlaying}
           >
             Next ▶
           </button>
         </div>
 
-        <div className="flex gap-2 justify-center">
-        <button
-          className="bg-gray-200 px-4 py-2 rounded"
-          onClick={saveFrame}
-        >
-          Save Frame
-        </button>
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-          onClick={newFrame}
-        >
-          New Frame
-        </button>
+        {/* Frame Actions */}
+        <div className="flex items-center gap-2">
+          <button onClick={() => addFrame(true)} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">+ New Frame (copy)</button>
+          <button onClick={deleteFrame} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700" disabled={frames.length === 1}>Delete Frame</button>
+        </div>
+        
+        {/* Playback Controls */}
+        <div className="flex items-center gap-3">
           <button
-            className="bg-indigo-600 text-white px-4 py-2 rounded"
-            onClick={handleSave}
-            title="Save this play to your account"
+            onClick={() => setIsPlaying((p) => !p)}
+            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full sm:w-auto"
+            disabled={frames.length < 2}
+            title={frames.length < 2 ? "Add at least 2 frames to play" : ""}
           >
-            Save Play
+            {isPlaying ? "Pause" : "Play"}
           </button>
-        <button
-          className="bg-emerald-600 text-white px-4 py-2 rounded"
-          onClick={() => setIsPlaying((p) => !p)}
-        >
-          {isPlaying ? "Pause" : "Play"}
-        </button>
-          <label className="text-sm text-gray-700 self-center">Sec/frame</label>
+          <label className="text-sm text-gray-700">Sec/frame</label>
           <select
-            className="border rounded px-2 py-1"
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
+            className="border rounded-lg px-2 py-1"
+            value={secondsPerFrame}
+            onChange={(e) => setSecondsPerFrame(Number(e.target.value))}
+            disabled={isPlaying}
           >
             <option value={0.25}>0.25</option>
             <option value={0.5}>0.5</option>
@@ -268,8 +220,13 @@ export default function CreatePlay() {
           </select>
         </div>
       </div>
+      
+      <button
+        onClick={handleSave}
+        className="mt-8 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+      >
+        Save Play
+      </button>
     </div>
   );
 }
-
-
