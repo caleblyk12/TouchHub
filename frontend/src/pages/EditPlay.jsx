@@ -16,6 +16,7 @@ export default function EditPlay() {
   const [idx, setIdx] = useState(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
+  const [justStartedPlaying, setJustStartedPlaying] = useState(false);
   const [secondsPerFrame, setSecondsPerFrame] = useState(1);
 
   useEffect(() => {
@@ -43,12 +44,12 @@ export default function EditPlay() {
   /** Logic for advancing frames during playback. Plays once from first to last frame. */
   useEffect(() => {
     if (!isPlaying || frames.length <= 1) return;
-    
-    // FIX: Always reset to frame 0 (index 0) immediately when playback starts
-    setIdx(0); 
+
+    setIdx(0);
+    setJustStartedPlaying(true);
+    const resetTimeout = setTimeout(() => setJustStartedPlaying(false), 50);
+
     let i = 0;
-    
-    // Set up the interval for frame transitions
     const t = setInterval(() => {
       i += 1;
       if (i >= frames.length) {
@@ -58,7 +59,10 @@ export default function EditPlay() {
       }
       setIdx(i);
     }, secondsPerFrame * 1000);
-    return () => clearInterval(t);
+    return () => {
+      clearTimeout(resetTimeout);
+      clearInterval(t);
+    };
   }, [isPlaying, frames.length, secondsPerFrame]);
 
   // Current frame's piece data for display
@@ -68,18 +72,18 @@ export default function EditPlay() {
    * This is the key for smooth animation.
    */
   const targetPositionsById = useMemo(() => {
-    if (!isPlaying || frames.length < 2) return null;
+    if (!isPlaying || frames.length < 2 || justStartedPlaying) return null;
     const nextIdx = idx + 1;
 
     // Stop animation when the next frame is the end of the array
-    if (nextIdx >= frames.length) return null; 
+    if (nextIdx >= frames.length) return null;
 
     const nextFramePieces = frames[nextIdx]?.pieces ?? [];
     return nextFramePieces.reduce((acc, p) => {
       acc[p.id] = { x: p.x, y: p.y };
       return acc;
     }, {});
-  }, [isPlaying, frames, idx]);
+  }, [isPlaying, frames, idx, justStartedPlaying]);
 
 
   /**
@@ -88,13 +92,13 @@ export default function EditPlay() {
   function addPiece(kind) {
     const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
     const type = kind === "ball" ? "ball" : "player";
-    const newObj = { 
+    const newObj = {
         // Ensure ID is an integer to satisfy Pydantic schema
-        id: Math.round(Date.now() + Math.random()), 
-        type, 
-        color, 
-        x: 0.5, 
-        y: 0.5, 
+        id: Math.round(Date.now() + Math.random()),
+        type,
+        color,
+        x: 0.5,
+        y: 0.5,
         rotation: 0,
         size: 1,
         label: null,
@@ -102,17 +106,17 @@ export default function EditPlay() {
     };
 
     setFrames((prev) => {
-      const newFrames = structuredClone(prev); 
+      const newFrames = structuredClone(prev);
 
       newFrames.forEach(frame => {
           // Push a deep copy of the new piece to every frame's pieces list
-          frame.pieces.push(structuredClone(newObj)); 
+          frame.pieces.push(structuredClone(newObj));
       });
 
       return newFrames;
     });
   }
-  
+
   /**
    * Handler for drag event from WhiteboardCanvas. Updates position for piece ID in current frame.
    */
@@ -188,26 +192,26 @@ export default function EditPlay() {
         <ObjectButton color="yellow" label="Add Ball" onClick={() => addPiece("ball")} />
       </div>
 
-    
+
       <WhiteboardCanvas
         pieces={pieces}
         onPositionChange={onPiecePositionChange} // Corrected to match the function name
-        targetPositionsById={targetPositionsById} 
+        targetPositionsById={targetPositionsById}
         frameDurationSec={secondsPerFrame}
       />
 
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <button 
-            onClick={prevFrame} 
+          <button
+            onClick={prevFrame}
             className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
             disabled={isPlaying}
           >
             ◀ Prev
           </button>
           <div className="px-3 py-2 rounded-lg bg-gray-100 text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
-          <button 
-            onClick={nextFrame} 
+          <button
+            onClick={nextFrame}
             className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
             disabled={isPlaying}
           >

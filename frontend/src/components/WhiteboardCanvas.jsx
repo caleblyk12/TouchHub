@@ -21,11 +21,11 @@ function clamp(v) {
  */
 export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDurationSec = 1, onPositionChange }) {
   const fieldRef = useRef(null);
-  const activeDragRef = useRef(null); 
-  
-  // CRITICAL FIX: The dragHandlers ref holds the latest functions and props 
+  const activeDragRef = useRef(null);
+
+  // CRITICAL FIX: The dragHandlers ref holds the latest functions and props
   // so global event listeners don't get stale closures or ReferenceErrors.
-  const dragHandlers = useRef({}); 
+  const dragHandlers = useRef({});
 
   /** Helper to convert absolute cursor position to normalized 0–1 within field */
   const toNormalized = useCallback((pointX, pointY) => {
@@ -45,19 +45,19 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
     return { x, y };
   }, []);
 
-  const isDraggable = !!onPositionChange && !targetPositionsById; 
+  const isDraggable = !!onPositionChange && !targetPositionsById;
 
-  // CRITICAL FIX: Use useEffect to define and store event handlers, 
+  // CRITICAL FIX: Use useEffect to define and store event handlers,
   // guaranteeing access to the latest props/refs/functions.
   useEffect(() => {
-    
+
     const current = dragHandlers.current;
 
     // 1. handleDrag (Continuous Move Logic)
     current.handleDrag = (e) => {
       if (!current.activeDragRef.current) return;
-      
-      e.preventDefault(); 
+
+      e.preventDefault();
 
       const clientX = e.clientX || (e.touches && e.touches[0].clientX);
       const clientY = e.clientY || (e.touches && e.touches[0].clientY);
@@ -65,46 +65,46 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
       if (clientX === undefined || clientY === undefined) return;
 
       const { element, initialClientX, initialClientY } = current.activeDragRef.current;
-      
+
       const dx = clientX - initialClientX;
       const dy = clientY - initialClientY;
-      
+
       // Apply the movement directly using CSS transform (visual update)
       element.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
     };
 
     // 2. handleDragEnd (Final Commit Logic)
-    current.handleDragEnd = (e) => { 
+    current.handleDragEnd = (e) => {
       if (!current.activeDragRef.current) return;
-      
+
       const { element, id, initialX, initialY, initialClientX, initialClientY } = current.activeDragRef.current;
 
       // Get final mouse/touch position from the 'mouseup' or 'touchend' event
       const finalClientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
       const finalClientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
-      
+
       // Only proceed if coordinates are valid AND onPositionChange is available
       if (finalClientX !== undefined && finalClientY !== undefined && current.onPositionChange) {
           // Calculate total drag offset in pixels
           const totalDx = finalClientX - initialClientX;
           const totalDy = finalClientY - initialClientY;
-          
+
           const fieldRect = current.fieldRef.current.getBoundingClientRect();
 
           // Final normalized position = Initial normalized position + Normalized drag change
           const newX = clamp(initialX + (totalDx / fieldRect.width));
           const newY = clamp(initialY + (totalDy / fieldRect.height));
-          
+
           // CRITICAL: Call the latest onPositionChange handler
           current.onPositionChange(id, newX, newY);
-          
+
           // Reset the DOM transform after state update.
-          element.style.transform = 'translate(-50%, -50%)'; 
+          element.style.transform = 'translate(-50%, -50%)';
       } else {
           // Reset visual state if operation failed or component is read-only
-          element.style.transform = 'translate(-50%, -50%)'; 
+          element.style.transform = 'translate(-50%, -50%)';
       }
-      
+
       element.classList.remove('dragging-piece');
       document.body.style.cursor = 'default';
       current.activeDragRef.current = null;
@@ -120,19 +120,19 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
     current.handleDragStart = (e, piece) => {
         if (!isDraggable) return;
         if (e.type === 'mousedown' && e.button !== 0) return;
-        
-        e.preventDefault(); 
-        e.stopPropagation(); 
-        
+
+        e.preventDefault();
+        e.stopPropagation();
+
         document.body.style.cursor = 'grabbing';
-        
+
         const clientX = e.clientX || (e.touches && e.touches[0].clientX);
         const clientY = e.clientY || (e.touches && e.touches[0].clientY);
         if (clientX === undefined || clientY === undefined) return;
 
         const element = e.currentTarget;
         element.classList.add('dragging-piece');
-        
+
         // Calculate piece center in screen pixels
         const pieceCenter = current.toScreen(piece.x, piece.y);
 
@@ -142,7 +142,7 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
             element: element,
             initialClientX: clientX,
             initialClientY: clientY,
-            initialX: piece.x, 
+            initialX: piece.x,
             initialY: piece.y,
         };
 
@@ -170,7 +170,7 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
     };
 
   // Rerun effect when props/dependencies change
-  }, [onPositionChange, isDraggable, toNormalized, toScreen]); 
+  }, [onPositionChange, isDraggable, toNormalized, toScreen]);
 
 
   return (
@@ -196,17 +196,16 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
               top: `${targetPositionsById[p.id].y * 100}%`,
             })
           }}
-          transition={{ 
-            duration: targetPositionsById ? frameDurationSec : 0, 
+          transition={{
+            duration: targetPositionsById ? frameDurationSec : 0,
             ease: "linear",
           }}
-          className={`absolute rounded-full shadow select-none ${isDraggable ? "cursor-grab" : "cursor-default"}`}
+          className={`absolute rounded-full shadow select-none ${isDraggable ? "cursor-grab" : "cursor-default"}
+                     ${p.type === "ball" ? "w-4 h-4 sm:w-[18px] sm:h-[18px]" : "w-5 h-5 sm:w-[26px] sm:h-[26px]"}`}
           // Base transform is -50% to center the piece
           style={{
-            width: p.type === "ball" ? 18 : 26,
-            height: p.type === "ball" ? 18 : 26,
             transform: 'translate(-50%, -50%)', // Base style for centering
-            backgroundColor: colorMap[p.color] || "transparent", 
+            backgroundColor: colorMap[p.color] || "transparent",
           }}
         />
       ))}

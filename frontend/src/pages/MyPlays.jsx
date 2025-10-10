@@ -51,6 +51,12 @@ export default function MyPlays() {
               </div>
               <div className="flex gap-3">
                 <Link
+                  to={`/plays/${p.id}`}
+                  className="text-green-600 hover:underline"
+                >
+                  View
+                </Link>
+                <Link
                   to={`/plays/${p.id}/edit`}
                   className="text-blue-600 hover:underline"
                 >
