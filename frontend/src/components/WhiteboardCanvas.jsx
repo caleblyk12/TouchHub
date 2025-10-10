@@ -1,7 +1,7 @@
 // src/components/WhiteboardCanvas.jsx
 
 import { motion } from "framer-motion";
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState, useMemo } from "react";
 
 const colorMap = {
   blue: "#2563eb",
@@ -22,10 +22,35 @@ function clamp(v) {
 export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDurationSec = 1, onPositionChange }) {
   const fieldRef = useRef(null);
   const activeDragRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
 
   // CRITICAL FIX: The dragHandlers ref holds the latest functions and props
   // so global event listeners don't get stale closures or ReferenceErrors.
   const dragHandlers = useRef({});
+
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth < 640);
+    }
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const transformedPieces = useMemo(() => {
+    if (!isMobile) return pieces;
+    return pieces.map(p => ({ ...p, x: p.y, y: 1 - p.x }));
+  }, [pieces, isMobile]);
+
+  const transformedTargetPositions = useMemo(() => {
+    if (!isMobile || !targetPositionsById) return targetPositionsById;
+    const newTargets = {};
+    for (const id in targetPositionsById) {
+      const { x, y } = targetPositionsById[id];
+      newTargets[id] = { x: y, y: 1 - x };
+    }
+    return newTargets;
+  }, [targetPositionsById, isMobile]);
 
   /** Helper to convert absolute cursor position to normalized 0–1 within field */
   const toNormalized = useCallback((pointX, pointY) => {
@@ -46,6 +71,16 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
   }, []);
 
   const isDraggable = !!onPositionChange && !targetPositionsById;
+
+  const onPositionChangeTransformed = useCallback((id, x, y) => {
+    if (onPositionChange) {
+      if (isMobile) {
+        onPositionChange(id, 1 - y, x);
+      } else {
+        onPositionChange(id, x, y);
+      }
+    }
+  }, [onPositionChange, isMobile]);
 
   // CRITICAL FIX: Use useEffect to define and store event handlers,
   // guaranteeing access to the latest props/refs/functions.
@@ -155,7 +190,7 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
 
 
     // Store latest props/refs/helpers onto the ref
-    current.onPositionChange = onPositionChange;
+    current.onPositionChange = onPositionChangeTransformed;
     current.fieldRef = fieldRef;
     current.activeDragRef = activeDragRef;
     current.toNormalized = toNormalized;
@@ -170,17 +205,18 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
     };
 
   // Rerun effect when props/dependencies change
-  }, [onPositionChange, isDraggable, toNormalized, toScreen]);
+  }, [onPositionChangeTransformed, isDraggable, toNormalized, toScreen]);
 
 
   return (
     <div
       ref={fieldRef}
-      className="relative w-full max-w-4xl mx-auto aspect-[3/2] bg-green-100 border-4 border-green-700 rounded-xl overflow-hidden select-none"
+      className={`relative w-full max-w-4xl mx-auto bg-green-100 border-4 border-green-700 rounded-xl overflow-hidden select-none ${isMobile ? 'aspect-[2/3]' : 'aspect-[3/2]'}`}
+      style={{ touchAction: 'none' }}
     >
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 h-full w-1 bg-green-700/20" />
+      <div className={`absolute ${isMobile ? 'h-1/2 w-full top-1/2 left-0 -translate-y-1/2' : 'left-1/2 top-0 -translate-x-1/2 h-full w-1'} bg-green-700/20`} />
 
-      {pieces.map((p) => (
+      {transformedPieces.map((p) => (
         <motion.div
           key={p.id}
           // Call the stable handleDragStart function stored in the ref
@@ -191,13 +227,13 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
           animate={{
             left: `${p.x * 100}%`,
             top: `${p.y * 100}%`,
-            ...(targetPositionsById?.[p.id] && {
-              left: `${targetPositionsById[p.id].x * 100}%`,
-              top: `${targetPositionsById[p.id].y * 100}%`,
+            ...(transformedTargetPositions?.[p.id] && {
+              left: `${transformedTargetPositions[p.id].x * 100}%`,
+              top: `${transformedTargetPositions[p.id].y * 100}%`,
             })
           }}
           transition={{
-            duration: targetPositionsById ? frameDurationSec : 0,
+            duration: transformedTargetPositions ? frameDurationSec : 0,
             ease: "linear",
           }}
           className={`absolute rounded-full shadow select-none ${isDraggable ? "cursor-grab" : "cursor-default"}

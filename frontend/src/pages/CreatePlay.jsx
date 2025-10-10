@@ -8,6 +8,7 @@ import api from "../api/axios";
 export default function CreatePlay() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("Untitled Play");
+  const [description, setDescription] = useState("");
 
   const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
   const [idx, setIdx] = useState(0);
@@ -132,7 +133,7 @@ export default function CreatePlay() {
   async function handleSave() {
     const payload = {
       title: title || "Untitled Play",
-      description: "Created in whiteboard",
+      description: description,
       frame_data: frames.map((f, i) => ({
         frame_number: i + 1,
         duration: secondsPerFrame,
@@ -150,21 +151,39 @@ export default function CreatePlay() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
-      <h2 className="text-3xl font-bold mb-6 text-blue-700">Create New Play</h2>
+        <button 
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+        </button>
+
+      <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-blue-700">Create New Play</h2>
 
       <input
         type="text"
         placeholder="Play title…"
-        className="border rounded-lg w-full p-3 mb-4 text-lg focus:ring-2 focus:ring-blue-500"
+        className="border rounded-lg w-full p-2 sm:p-3 mb-4 text-base sm:text-lg focus:ring-2 focus:ring-blue-500"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
 
-      <div className="grid grid-cols-2 sm:flex gap-3 mb-4">
-        <ObjectButton color="blue" label="Add Team 1 Player" onClick={() => addPiece("team1")} />
-        <ObjectButton color="red" label="Add Team 2 Player" onClick={() => addPiece("team2")} />
-        <ObjectButton color="green" label="Add Team 3 Player" onClick={() => addPiece("team3")} />
-        <ObjectButton color="yellow" label="Add Ball" onClick={() => addPiece("ball")} />
+      <textarea
+        placeholder="Add a description (optional)..."
+        className="border rounded-lg w-full p-2 sm:p-3 mb-4 text-base sm:text-lg focus:ring-2 focus:ring-blue-500"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        rows="2"
+      />
+
+      <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 mb-4">
+        <ObjectButton color="blue" label="Team 1" onClick={() => addPiece("team1")} />
+        <ObjectButton color="red" label="Team 2" onClick={() => addPiece("team2")} />
+        <ObjectButton color="green" label="Team 3" onClick={() => addPiece("team3")} />
+        <ObjectButton color="yellow" label="Ball" onClick={() => addPiece("ball")} />
       </div>
 
       <WhiteboardCanvas
@@ -179,15 +198,15 @@ export default function CreatePlay() {
         <div className="flex items-center gap-2">
           <button
             onClick={prevFrame}
-            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
             disabled={isPlaying}
           >
             ◀ Prev
           </button>
-          <div className="px-3 py-2 rounded-lg bg-gray-100 text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
+          <div className="px-3 py-2 rounded-lg bg-gray-100 text-xs sm:text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
           <button
             onClick={nextFrame}
-            className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
             disabled={isPlaying}
           >
             Next ▶
@@ -196,23 +215,23 @@ export default function CreatePlay() {
 
         {/* Frame Actions */}
         <div className="flex items-center gap-2">
-          <button onClick={() => addFrame(true)} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">+ New Frame (copy)</button>
-          <button onClick={deleteFrame} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700" disabled={frames.length === 1}>Delete Frame</button>
+          <button onClick={() => addFrame(true)} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base">+ New Frame</button>
+          <button onClick={deleteFrame} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm sm:text-base" disabled={frames.length === 1}>Delete</button>
         </div>
 
         {/* Playback Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setIsPlaying((p) => !p)}
-            className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full sm:w-auto"
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full sm:w-auto text-sm sm:text-base"
             disabled={frames.length < 2}
             title={frames.length < 2 ? "Add at least 2 frames to play" : ""}
           >
             {isPlaying ? "Pause" : "Play"}
           </button>
-          <label className="text-sm text-gray-700">Sec/frame</label>
+          <label className="text-xs sm:text-sm text-gray-700">Sec/frame</label>
           <select
-            className="border rounded-lg px-2 py-1"
+            className="border rounded-lg px-2 py-1 text-xs sm:text-sm"
             value={secondsPerFrame}
             onChange={(e) => setSecondsPerFrame(Number(e.target.value))}
             disabled={isPlaying}

@@ -3,12 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 import WhiteboardCanvas from "../components/WhiteboardCanvas";
+import { useAuth } from "../context/AuthContext";
 
 export default function PlayDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get the current user
 
-  const [title, setTitle] = useState("");
+  const [play, setPlay] = useState(null);
   const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
   const [idx, setIdx] = useState(0);
   const [secondsPerFrame, setSecondsPerFrame] = useState(1);
@@ -16,12 +18,11 @@ export default function PlayDetails() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [justStartedPlaying, setJustStartedPlaying] = useState(false);
 
-
   useEffect(() => {
     (async () => {
       try {
         const { data } = await api.get(`/plays/${id}`);
-        setTitle(data.title);
+        setPlay(data); // Store the full play data
         const f = data.frame_data?.length
           ? data.frame_data.map((fr, i) => ({
               frame_number: i + 1,
@@ -81,12 +82,24 @@ export default function PlayDetails() {
     }, {});
   }, [isPlaying, frames, idx, justStartedPlaying]);
 
+  const isOwner = user && play && user.id === play.owner_id;
 
   if (!loaded) return <div className="text-center text-gray-500 mt-10">Loading…</div>;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
-      <h2 className="text-3xl font-bold mb-4 text-blue-700">{title}</h2>
+      <button 
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </button>
+
+      <h2 className="text-3xl font-bold text-blue-700">{play.title}</h2>
+      {play.description && <p className="text-gray-600 mt-2 mb-4">{play.description}</p>}
 
       <WhiteboardCanvas
         pieces={pieces}
@@ -136,12 +149,14 @@ export default function PlayDetails() {
           </select>
         </div>
 
-        <Link
-          to={`/plays/${id}/edit`}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto text-center"
-        >
-          Edit
-        </Link>
+        {isOwner && (
+            <Link
+                to={`/plays/${id}/edit`}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 w-full sm:w-auto text-center"
+            >
+                Edit
+            </Link>
+        )}
       </div>
     </div>
   );

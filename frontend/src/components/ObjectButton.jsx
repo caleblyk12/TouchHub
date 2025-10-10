@@ -11,7 +11,7 @@ export default function ObjectButton({ color, label, onClick }) {
     <button
       onClick={onClick}
       className={`${colorClass[color] || "bg-gray-600 hover:bg-gray-700 text-white"} 
-                  px-4 py-2 rounded-lg font-semibold transition w-full sm:w-auto`}
+                  px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-semibold transition w-full sm:w-auto text-sm sm:text-base`}
     >
       {label}
     </button>
