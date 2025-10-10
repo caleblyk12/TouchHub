@@ -68,17 +68,21 @@ def create_play(db: Session, play: schemas.PlayCreate, owner_id: int):
 
 
 
-
-
 def update_play(db: Session, play_id: int, play_update: schemas.PlayUpdate):
     play = get_play_by_id(db, play_id)
     if play:
-        play.title = play_update.title
-        play.description = play_update.description
-        play.frame_data = play_update.frame_data
-        play.is_private = play_update.is_private
-        #all the above changes are tracked changes, since the current play object has diff attributes from
-        #its db counterpart. When you call commit, all these tracked changes are synced up.
+        # The .model_dump() method takes the special Pydantic object (play_update) and converts it 
+        # into a standard Python dictionary. Now, frame_data is a simple list of dictionaries,
+        #  which the database can easily understand and save as JSON
+        update_data = play_update.model_dump(exclude_unset=True)
+
+        #This is a flexible way to update your database object. 
+        # For each item in the dictionary, it says, 
+        # "set the attribute key on the play object to the new value." 
+        # So it automatically handles updating title, description, and the now-correctly-formatted frame_data
+        for key, value in update_data.items():
+            setattr(play, key, value)
+        #things like userid is not included in the data, so it doesnt get updated
         db.commit()
         db.refresh(play)
     return play

@@ -188,10 +188,11 @@ export default function EditPlay() {
         <ObjectButton color="yellow" label="Add Ball" onClick={() => addPiece("ball")} />
       </div>
 
+    
       <WhiteboardCanvas
         pieces={pieces}
-        onPositionChange={onPositionChange}
-        targetPositionsById={targetPositionsById} // Pass the next frame for animation
+        onPositionChange={onPiecePositionChange} // Corrected to match the function name
+        targetPositionsById={targetPositionsById} 
         frameDurationSec={secondsPerFrame}
       />
 
