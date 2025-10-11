@@ -9,6 +9,7 @@ export default function CreatePlay() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("Untitled Play");
   const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false); // State for privacy setting
 
   const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
   const [idx, setIdx] = useState(0);
@@ -66,7 +67,6 @@ export default function CreatePlay() {
     const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
     const type = kind === "ball" ? "ball" : "player";
     const newObj = {
-        // Ensure ID is an integer to satisfy Pydantic schema
         id: Math.round(Date.now() + Math.random()),
         type,
         color,
@@ -80,11 +80,9 @@ export default function CreatePlay() {
 
     setFrames((prev) => {
       const newFrames = structuredClone(prev);
-
       newFrames.forEach(frame => {
           frame.pieces.push(structuredClone(newObj));
       });
-
       return newFrames;
     });
   }
@@ -139,7 +137,7 @@ export default function CreatePlay() {
         duration: secondsPerFrame,
         pieces: f.pieces,
       })),
-      is_private: false,
+      is_private: isPrivate, // Include privacy setting in payload
     };
     try {
         await api.post("/plays/", payload);
@@ -244,9 +242,23 @@ export default function CreatePlay() {
         </div>
       </div>
 
+      {/* Privacy Toggle */}
+      <div className="mt-8 flex items-center justify-start gap-3">
+        <label htmlFor="privacy-toggle" className="flex items-center cursor-pointer">
+          <div className="relative">
+            <input type="checkbox" id="privacy-toggle" className="sr-only" checked={isPrivate} onChange={() => setIsPrivate(!isPrivate)} />
+            <div className={`block w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors ${isPrivate ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+            <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-transform ${isPrivate ? 'transform translate-x-full' : ''}`}></div>
+          </div>
+          <div className="ml-3 text-sm sm:text-base text-gray-700 font-medium">
+            Private Play <span className="hidden sm:inline text-sm text-gray-500 font-normal">(only you can see it)</span>
+          </div>
+        </label>
+      </div>
+
       <button
         onClick={handleSave}
-        className="mt-8 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+        className="mt-6 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
       >
         Save Play
       </button>

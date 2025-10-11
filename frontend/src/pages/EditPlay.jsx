@@ -12,6 +12,7 @@ export default function EditPlay() {
   const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false); // State for privacy setting
 
   const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
   const [idx, setIdx] = useState(0);
@@ -26,6 +27,7 @@ export default function EditPlay() {
         const { data } = await api.get(`/plays/${id}`);
         setTitle(data.title);
         setDescription(data.description || "");
+        setIsPrivate(data.is_private || false); // Set initial privacy state
         const f = data.frame_data?.length
           ? data.frame_data.map((fr, i) => ({
               frame_number: i + 1,
@@ -33,7 +35,6 @@ export default function EditPlay() {
             }))
           : [{ frame_number: 1, pieces: [] }];
         setFrames(f);
-        // try to derive duration from first frame (fallback 1)
         if (data.frame_data?.[0]?.duration) setSecondsPerFrame(data.frame_data[0].duration);
         setLoaded(true);
       } catch {
@@ -43,7 +44,7 @@ export default function EditPlay() {
     })();
   }, [id, navigate]);
 
-  /** Logic for advancing frames during playback. Plays once from first to last frame. */
+  /** Logic for advancing frames during playback. */
   useEffect(() => {
     if (!isPlaying || frames.length <= 1) return;
 
@@ -67,17 +68,12 @@ export default function EditPlay() {
     };
   }, [isPlaying, frames.length, secondsPerFrame]);
 
-  // Current frame's piece data for display
   const pieces = useMemo(() => frames[idx]?.pieces ?? [], [frames, idx]);
 
-  /** * Target positions for smooth animation: positions of the *next* frame.
-   * This is the key for smooth animation.
-   */
   const targetPositionsById = useMemo(() => {
     if (!isPlaying || frames.length < 2 || justStartedPlaying) return null;
     const nextIdx = idx + 1;
 
-    // Stop animation when the next frame is the end of the array
     if (nextIdx >= frames.length) return null;
 
     const nextFramePieces = frames[nextIdx]?.pieces ?? [];
@@ -88,14 +84,10 @@ export default function EditPlay() {
   }, [isPlaying, frames, idx, justStartedPlaying]);
 
 
-  /**
-   * Adds a new piece to ALL frames at its initial position (0.5, 0.5).
-   */
   function addPiece(kind) {
     const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
     const type = kind === "ball" ? "ball" : "player";
     const newObj = {
-        // Ensure ID is an integer to satisfy Pydantic schema
         id: Math.round(Date.now() + Math.random()),
         type,
         color,
@@ -109,19 +101,13 @@ export default function EditPlay() {
 
     setFrames((prev) => {
       const newFrames = structuredClone(prev);
-
       newFrames.forEach(frame => {
-          // Push a deep copy of the new piece to every frame's pieces list
           frame.pieces.push(structuredClone(newObj));
       });
-
       return newFrames;
     });
   }
 
-  /**
-   * Handler for drag event from WhiteboardCanvas. Updates position for piece ID in current frame.
-   */
   function onPiecePositionChange(id, x, y) {
     setFrames((prev) => {
       const copy = structuredClone(prev);
@@ -136,7 +122,6 @@ export default function EditPlay() {
 
   function addFrame(copyCurrent = true) {
     setFrames((prev) => {
-      // structuredClone ensures a deep copy of the previous frame's pieces
       const base = copyCurrent ? structuredClone(prev[idx]) : { frame_number: prev.length + 1, pieces: [] };
       const newFrame = { frame_number: prev.length + 1, pieces: base.pieces ?? [] };
       return [...prev, newFrame];
@@ -167,7 +152,7 @@ export default function EditPlay() {
         duration: secondsPerFrame,
         pieces: f.pieces,
       })),
-      is_private: false,
+      is_private: isPrivate, // Include privacy setting in payload
     };
     await api.put(`/plays/${id}`, payload);
     navigate("/plays/me");
@@ -215,7 +200,7 @@ export default function EditPlay() {
 
       <WhiteboardCanvas
         pieces={pieces}
-        onPositionChange={onPiecePositionChange} // Corrected to match the function name
+        onPositionChange={onPiecePositionChange}
         targetPositionsById={targetPositionsById}
         frameDurationSec={secondsPerFrame}
       />
@@ -268,9 +253,23 @@ export default function EditPlay() {
         </div>
       </div>
 
+      {/* Privacy Toggle */}
+      <div className="mt-8 flex items-center justify-start gap-3">
+        <label htmlFor="privacy-toggle" className="flex items-center cursor-pointer">
+          <div className="relative">
+            <input type="checkbox" id="privacy-toggle" className="sr-only" checked={isPrivate} onChange={() => setIsPrivate(!isPrivate)} />
+            <div className={`block w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors ${isPrivate ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
+            <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-transform ${isPrivate ? 'transform translate-x-full' : ''}`}></div>
+          </div>
+          <div className="ml-3 text-sm sm:text-base text-gray-700 font-medium">
+            Private Play <span className="hidden sm:inline text-sm text-gray-500 font-normal">(only you can see it)</span>
+          </div>
+        </label>
+      </div>
+
       <button
         onClick={handleSave}
-        className="mt-8 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+        className="mt-6 w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
       >
         Save Changes
       </button>

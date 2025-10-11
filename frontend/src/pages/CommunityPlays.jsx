@@ -33,10 +33,10 @@ export default function CommunityPlays() {
             <Link
               key={p.id}
               to={`/plays/${p.id}`}
-              className="block bg-white rounded-xl shadow p-4 hover:bg-blue-50 transition text-center min-h-[100px]"
+              className="block bg-white rounded-xl shadow p-4 hover:bg-blue-50 transition min-h-[100px] overflow-hidden"
             >
-              <h3 className="text-lg font-bold text-gray-800">{p.title}</h3>
-              <p className="text-sm text-gray-500">{p.description}</p>
+              <h3 className="text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
+              <p className="text-sm text-gray-500 truncate text-center">{p.description}</p>
             </Link>
           ))}
         </div>

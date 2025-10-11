@@ -74,11 +74,11 @@ export default function MyPlays() {
         {plays.map((p) => (
           <div
             key={p.id}
-            className="bg-white rounded-xl shadow p-4 flex flex-col items-center text-center"
+            className="bg-white rounded-xl shadow p-4 flex flex-col items-center overflow-hidden"
           >
-            <div className="flex-1 min-w-0 mb-3">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">{p.title}</h3>
-              <p className="text-xs sm:text-sm text-gray-500 truncate">{p.description}</p>
+            <div className="flex-1 min-w-0 mb-3 w-full">
+              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
+              <p className="text-xs sm:text-sm text-gray-500 truncate text-center">{p.description}</p>
             </div>
             <div className="flex justify-center items-center flex-shrink-0 gap-2 sm:gap-3 mt-auto">
               <Link to={`/plays/${p.id}`} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-gray-100" title="View">

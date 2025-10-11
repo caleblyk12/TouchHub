@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/TouchHub.png"; // Import the logo
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -18,8 +19,8 @@ export default function Navbar() {
       {/* Top bar */}
       <div className="flex justify-between items-center">
         {/* Logo */}
-        <Link to="/home" className="text-2xl font-bold text-blue-600">
-          TouchHub
+        <Link to="/home" className="flex items-center">
+          <img src={logo} alt="TouchHub Logo" className="h-8 w-auto" />
         </Link>
 
         {/* Hamburger button */}

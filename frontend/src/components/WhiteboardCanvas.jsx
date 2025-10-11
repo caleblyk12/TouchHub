@@ -237,7 +237,7 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
             ease: "linear",
           }}
           className={`absolute rounded-full shadow select-none ${isDraggable ? "cursor-grab" : "cursor-default"}
-                     ${p.type === "ball" ? "w-4 h-4 sm:w-[18px] sm:h-[18px]" : "w-5 h-5 sm:w-[26px] sm:h-[26px]"}`}
+          ${p.type === "ball" ? "w-3 h-3 sm:w-[18px] sm:h-[18px]" : "w-4 h-4 sm:w-[26px] sm:h-[26px]"}`}
           // Base transform is -50% to center the piece
           style={{
             transform: 'translate(-50%, -50%)', // Base style for centering
