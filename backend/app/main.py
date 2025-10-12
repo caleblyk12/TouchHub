@@ -5,10 +5,6 @@ from .routers import plays, users, auth
 from fastapi.middleware.cors import CORSMiddleware
 
 
-
-# Create tables at startup (for dev only — use Alembic later)
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,

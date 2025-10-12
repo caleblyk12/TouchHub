@@ -1,14 +1,15 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-DATABASE_URL = "sqlite:///./app.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-#engine is the connection to the database
-engine = create_engine(
-    DATABASE_URL, connect_args={"check_same_thread": False}  # needed for SQLite
-)
+#Engine is the bridge to the database
+engine = create_engine(DATABASE_URL)
+
 #sessionLocal is a session factory. It creates db sessions via the engine.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
