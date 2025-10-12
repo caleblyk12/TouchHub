@@ -37,6 +37,7 @@ export default function CommunityPlays() {
             >
               <h3 className="text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
               <p className="text-sm text-gray-500 truncate text-center">{p.description}</p>
+              <p className="text-xs text-gray-400 truncate text-center mt-2">Publisher: {p.owner.username}</p>
             </Link>
           ))}
         </div>

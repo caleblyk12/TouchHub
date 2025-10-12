@@ -77,8 +77,7 @@ class PlayOut(PlayBase):
     #sql/sqlalchemy auto creates running ids as pkey 
     #when returning, we return this id tgther with the data
     id: int
-    owner_id: int
-
+    owner: UserOut
     #This class config allows auto changing of ORM table into JSON for frontend
     #we dont need it for put or post because FE gives us json, and we use that json to create table
     #but when returning response, its faster if we can just return orm object from our query
