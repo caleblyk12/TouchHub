@@ -8,6 +8,8 @@ export default function Home() {
         Create, visualize, and share your Touch Rugby plays with teammates and coaches.
       </p>
       <p className="text-gray-500 text-sm">Use the navigation menu above to get started.</p>
+      <br></br>
+      <p className="text-gray-400 text-sm">Note: Play creation is best done on PC, not mobile</p>
     </div>
   );
 }

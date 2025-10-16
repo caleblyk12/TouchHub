@@ -7,15 +7,19 @@ export default function Register() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ username: "", email: "", password: "" });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       await register(form);
       navigate("/home", { replace: true });
     } catch (err) {
       setError(err?.response?.data?.detail ?? "Registration failed");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -38,6 +42,7 @@ export default function Register() {
             onChange={(e) => setForm({ ...form, username: e.target.value })}
             required
             autoFocus
+            disabled={isLoading}
           />
         </div>
 
@@ -49,6 +54,7 @@ export default function Register() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
 
@@ -60,14 +66,16 @@ export default function Register() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 transition"
+          className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+          disabled={isLoading}
         >
-          Create account
+          {isLoading ? "Creating account...please be patient!" : "Create account"}
         </button>
       </form>
 

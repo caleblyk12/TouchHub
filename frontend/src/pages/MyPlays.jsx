@@ -31,10 +31,18 @@ const PlusIcon = () => (
 
 export default function MyPlays() {
   const [plays, setPlays] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   async function fetchPlays() {
-    const { data } = await api.get("/plays/me");
-    setPlays(data);
+    setIsLoading(true);
+    try {
+      const { data } = await api.get("/plays/me");
+      setPlays(data);
+    } catch (error) {
+      console.error("Failed to fetch plays:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function deletePlay(id) {
@@ -54,46 +62,48 @@ export default function MyPlays() {
         <h2 className="text-3xl sm:text-4xl font-bold text-blue-700">My Plays</h2>
       </div>
 
-      {plays.length === 0 ? (
+      {isLoading ? (
+        <div className="text-center text-gray-500">Loading plays...</div>
+      ) : plays.length === 0 ? (
         <div className="bg-white rounded-2xl shadow p-6 text-gray-500 text-center">
           You haven’t created any plays yet. Get started by creating one!
         </div>
-      ) : null}
-
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Create New Play Card */}
-        <Link
-          to="/plays/create"
-          className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-300 hover:border-blue-500 hover:text-blue-600 transition group min-h-[140px]"
-        >
-          <PlusIcon />
-          <span className="font-semibold text-gray-600 group-hover:text-blue-600">Create New Play</span>
-        </Link>
-        
-        {/* Existing Play Cards */}
-        {plays.map((p) => (
-          <div
-            key={p.id}
-            className="bg-white rounded-xl shadow p-4 flex flex-col items-center overflow-hidden"
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Create New Play Card */}
+          <Link
+            to="/plays/create"
+            className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-300 hover:border-blue-500 hover:text-blue-600 transition group min-h-[140px]"
           >
-            <div className="flex-1 min-w-0 mb-3 w-full">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
-              <p className="text-xs sm:text-sm text-gray-500 truncate text-center">{p.description}</p>
+            <PlusIcon />
+            <span className="font-semibold text-gray-600 group-hover:text-blue-600">Create New Play</span>
+          </Link>
+
+          {/* Existing Play Cards */}
+          {plays.map((p) => (
+            <div
+              key={p.id}
+              className="bg-white rounded-xl shadow p-4 flex flex-col items-center overflow-hidden"
+            >
+              <div className="flex-1 min-w-0 mb-3 w-full">
+                <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 truncate text-center">{p.description}</p>
+              </div>
+              <div className="flex justify-center items-center flex-shrink-0 gap-2 sm:gap-3 mt-auto">
+                <Link to={`/plays/${p.id}`} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-gray-100" title="View">
+                  <ViewIcon />
+                </Link>
+                <Link to={`/plays/${p.id}/edit`} className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-gray-100" title="Edit">
+                  <EditIcon />
+                </Link>
+                <button onClick={() => deletePlay(p.id)} className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-gray-100" title="Delete">
+                  <DeleteIcon />
+                </button>
+              </div>
             </div>
-            <div className="flex justify-center items-center flex-shrink-0 gap-2 sm:gap-3 mt-auto">
-              <Link to={`/plays/${p.id}`} className="text-green-600 hover:text-green-800 p-1 rounded-full hover:bg-gray-100" title="View">
-                <ViewIcon />
-              </Link>
-              <Link to={`/plays/${p.id}/edit`} className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-gray-100" title="Edit">
-                <EditIcon />
-              </Link>
-              <button onClick={() => deletePlay(p.id)} className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-gray-100" title="Delete">
-                <DeleteIcon />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

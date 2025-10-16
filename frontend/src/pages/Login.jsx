@@ -10,15 +10,19 @@ export default function Login() {
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       await login(form);
       navigate(from, { replace: true });
     } catch (err) {
       setError(err?.response?.data?.detail ?? "Login failed");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -41,6 +45,7 @@ export default function Login() {
             onChange={(e) => setForm({ ...form, username: e.target.value })}
             required
             autoFocus
+            disabled={isLoading}
           />
         </div>
 
@@ -52,14 +57,16 @@ export default function Login() {
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
+            disabled={isLoading}
           />
         </div>
 
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 transition"
+          className="w-full bg-blue-600 text-white py-3 rounded-xl text-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+          disabled={isLoading}
         >
-          Sign in
+          {isLoading ? "Signing in...please be patient!" : "Sign in"}
         </button>
       </form>
 
@@ -72,4 +79,3 @@ export default function Login() {
     </div>
   );
 }
-
