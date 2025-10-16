@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import logo from "../assets/TouchHub.png"; // Import the logo
 
@@ -22,6 +22,13 @@ export default function Navbar() {
         <Link to="/home" className="flex items-center">
           <img src={logo} alt="TouchHub Logo" className="h-8 w-auto" />
         </Link>
+
+        {/* Welcome message for mobile view */}
+        {user && (
+          <div className="sm:hidden text-sm text-gray-600">
+            Hi, <b>{user.username}</b>
+          </div>
+        )}
 
         {/* Hamburger button */}
         <button
@@ -94,11 +101,16 @@ export default function Navbar() {
 }
 
 function NavLink({ to, label, onClick }) {
+  const location = useLocation();
+  const isActive = location.pathname === to;
+
   return (
     <Link
       to={to}
       onClick={onClick}
-      className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+      className={`font-medium transition-colors ${
+        isActive ? "text-blue-600" : "text-gray-700 hover:text-blue-600"
+      }`}
     >
       {label}
     </Link>
