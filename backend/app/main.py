@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://your-frontend.vercel.app", "http://localhost:5173"],
+    allow_origins=["https://touch-hub.vercel.app", "http://localhost:5173"],
     allow_credentials=True, #allow FE to send cookies, auth headers, etc
     allow_methods=["*"], #allow GET, POST, PUT, DELETE (controls which http methods allowed)
     allow_headers=["*"], #allows headers (for auth)
