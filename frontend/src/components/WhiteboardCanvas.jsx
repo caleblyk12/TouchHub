@@ -19,10 +19,17 @@ function clamp(v) {
  * targetPositionsById: optional map { [id]: { x, y } } used for smooth playback/preview
  * onPositionChange: (id, x, y) => void - Callback to notify parent of new position
  */
-export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDurationSec = 1, onPositionChange }) {
+export default function WhiteboardCanvas({
+  pieces,
+  targetPositionsById,
+  frameDurationSec = 1,
+  onPositionChange,
+  onPieceSettings,
+}) {
   const fieldRef = useRef(null);
   const activeDragRef = useRef(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const longPressTimeout = useRef(null);
 
   // CRITICAL FIX: The dragHandlers ref holds the latest functions and props
   // so global event listeners don't get stale closures or ReferenceErrors.
@@ -33,13 +40,13 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
       setIsMobile(window.innerWidth < 640);
     }
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const transformedPieces = useMemo(() => {
     if (!isMobile) return pieces;
-    return pieces.map(p => ({ ...p, x: p.y, y: 1 - p.x }));
+    return pieces.map((p) => ({ ...p, x: p.y, y: 1 - p.x }));
   }, [pieces, isMobile]);
 
   const transformedTargetPositions = useMemo(() => {
@@ -72,25 +79,31 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
 
   const isDraggable = !!onPositionChange && !targetPositionsById;
 
-  const onPositionChangeTransformed = useCallback((id, x, y) => {
-    if (onPositionChange) {
-      if (isMobile) {
-        onPositionChange(id, 1 - y, x);
-      } else {
-        onPositionChange(id, x, y);
+  const onPositionChangeTransformed = useCallback(
+    (id, x, y) => {
+      if (onPositionChange) {
+        if (isMobile) {
+          onPositionChange(id, 1 - y, x);
+        } else {
+          onPositionChange(id, x, y);
+        }
       }
-    }
-  }, [onPositionChange, isMobile]);
+    },
+    [onPositionChange, isMobile]
+  );
 
   // CRITICAL FIX: Use useEffect to define and store event handlers,
   // guaranteeing access to the latest props/refs/functions.
   useEffect(() => {
-
     const current = dragHandlers.current;
 
     // 1. handleDrag (Continuous Move Logic)
     current.handleDrag = (e) => {
       if (!current.activeDragRef.current) return;
+      if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+        longPressTimeout.current = null;
+      }
 
       e.preventDefault();
 
@@ -99,7 +112,8 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
 
       if (clientX === undefined || clientY === undefined) return;
 
-      const { element, initialClientX, initialClientY } = current.activeDragRef.current;
+      const { element, initialClientX, initialClientY } =
+        current.activeDragRef.current;
 
       const dx = clientX - initialClientX;
       const dy = clientY - initialClientY;
@@ -110,84 +124,104 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
 
     // 2. handleDragEnd (Final Commit Logic)
     current.handleDragEnd = (e) => {
+      if (longPressTimeout.current) {
+        clearTimeout(longPressTimeout.current);
+        longPressTimeout.current = null;
+      }
       if (!current.activeDragRef.current) return;
 
-      const { element, id, initialX, initialY, initialClientX, initialClientY } = current.activeDragRef.current;
+      const {
+        element,
+        id,
+        initialX,
+        initialY,
+        initialClientX,
+        initialClientY,
+      } = current.activeDragRef.current;
 
       // Get final mouse/touch position from the 'mouseup' or 'touchend' event
-      const finalClientX = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
-      const finalClientY = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+      const finalClientX =
+        e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+      const finalClientY =
+        e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
 
       // Only proceed if coordinates are valid AND onPositionChange is available
-      if (finalClientX !== undefined && finalClientY !== undefined && current.onPositionChange) {
-          // Calculate total drag offset in pixels
-          const totalDx = finalClientX - initialClientX;
-          const totalDy = finalClientY - initialClientY;
+      if (
+        finalClientX !== undefined &&
+        finalClientY !== undefined &&
+        current.onPositionChange
+      ) {
+        // Calculate total drag offset in pixels
+        const totalDx = finalClientX - initialClientX;
+        const totalDy = finalClientY - initialClientY;
 
-          const fieldRect = current.fieldRef.current.getBoundingClientRect();
+        const fieldRect = current.fieldRef.current.getBoundingClientRect();
 
-          // Final normalized position = Initial normalized position + Normalized drag change
-          const newX = clamp(initialX + (totalDx / fieldRect.width));
-          const newY = clamp(initialY + (totalDy / fieldRect.height));
+        // Final normalized position = Initial normalized position + Normalized drag change
+        const newX = clamp(initialX + totalDx / fieldRect.width);
+        const newY = clamp(initialY + totalDy / fieldRect.height);
 
-          // CRITICAL: Call the latest onPositionChange handler
-          current.onPositionChange(id, newX, newY);
+        // CRITICAL: Call the latest onPositionChange handler
+        current.onPositionChange(id, newX, newY);
 
-          // Reset the DOM transform after state update.
-          element.style.transform = 'translate(-50%, -50%)';
+        // Reset the DOM transform after state update.
+        element.style.transform = "translate(-50%, -50%)";
       } else {
-          // Reset visual state if operation failed or component is read-only
-          element.style.transform = 'translate(-50%, -50%)';
+        // Reset visual state if operation failed or component is read-only
+        element.style.transform = "translate(-50%, -50%)";
       }
 
-      element.classList.remove('dragging-piece');
-      document.body.style.cursor = 'default';
+      element.classList.remove("dragging-piece");
+      document.body.style.cursor = "default";
       current.activeDragRef.current = null;
 
       // Remove global event listeners
-      document.removeEventListener('mousemove', current.handleDrag);
-      document.removeEventListener('mouseup', current.handleDragEnd);
-      document.removeEventListener('touchmove', current.handleDrag);
-      document.removeEventListener('touchend', current.handleDragEnd);
+      document.removeEventListener("mousemove", current.handleDrag);
+      document.removeEventListener("mouseup", current.handleDragEnd);
+      document.removeEventListener("touchmove", current.handleDrag);
+      document.removeEventListener("touchend", current.handleDragEnd);
     };
 
     // 3. handleDragStart (Setup Logic)
     current.handleDragStart = (e, piece) => {
-        if (!isDraggable) return;
-        if (e.type === 'mousedown' && e.button !== 0) return;
+      if (!isDraggable) return;
+      if (e.type === "mousedown" && e.button !== 0) return;
 
-        e.preventDefault();
-        e.stopPropagation();
+      e.preventDefault();
+      e.stopPropagation();
 
-        document.body.style.cursor = 'grabbing';
+      if (e.type === "touchstart") {
+        longPressTimeout.current = setTimeout(() => {
+          onPieceSettings(piece);
+          longPressTimeout.current = null; // Prevent drag end from firing
+        }, 500);
+      }
 
-        const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-        const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-        if (clientX === undefined || clientY === undefined) return;
+      document.body.style.cursor = "grabbing";
 
-        const element = e.currentTarget;
-        element.classList.add('dragging-piece');
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      if (clientX === undefined || clientY === undefined) return;
 
-        // Calculate piece center in screen pixels
-        const pieceCenter = current.toScreen(piece.x, piece.y);
+      const element = e.currentTarget;
+      element.classList.add("dragging-piece");
 
-        // Store drag context
-        current.activeDragRef.current = {
-            id: piece.id,
-            element: element,
-            initialClientX: clientX,
-            initialClientY: clientY,
-            initialX: piece.x,
-            initialY: piece.y,
-        };
+      // Store drag context
+      current.activeDragRef.current = {
+        id: piece.id,
+        element: element,
+        initialClientX: clientX,
+        initialClientY: clientY,
+        initialX: piece.x,
+        initialY: piece.y,
+      };
 
-        // Attach listeners using the functions defined above in the same closure
-        document.addEventListener('mousemove', current.handleDrag);
-        document.addEventListener('mouseup', current.handleDragEnd);
-        document.addEventListener('touchmove', current.handleDrag);
-        document.addEventListener('touchend', current.handleDragEnd);
+      // Attach listeners using the functions defined above in the same closure
+      document.addEventListener("mousemove", current.handleDrag);
+      document.addEventListener("mouseup", current.handleDragEnd);
+      document.addEventListener("touchmove", current.handleDrag);
+      document.addEventListener("touchend", current.handleDragEnd);
     };
-
 
     // Store latest props/refs/helpers onto the ref
     current.onPositionChange = onPositionChangeTransformed;
@@ -198,31 +232,61 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
 
     // The cleanup function handles global listener removal
     return () => {
-        document.removeEventListener('mousemove', current.handleDrag);
-        document.removeEventListener('mouseup', current.handleDragEnd);
-        document.removeEventListener('touchmove', current.handleDrag);
-        document.removeEventListener('touchend', current.handleDragEnd);
+      document.removeEventListener("mousemove", current.handleDrag);
+      document.removeEventListener("mouseup", current.handleDragEnd);
+      document.removeEventListener("touchmove", current.handleDrag);
+      document.removeEventListener("touchend", current.handleDragEnd);
     };
 
-  // Rerun effect when props/dependencies change
-  }, [onPositionChangeTransformed, isDraggable, toNormalized, toScreen]);
+    // Rerun effect when props/dependencies change
+  }, [
+    onPositionChangeTransformed,
+    isDraggable,
+    toNormalized,
+    toScreen,
+    onPieceSettings,
+  ]);
 
+  const handleRightClick = (e, piece) => {
+    e.preventDefault();
+    if (onPieceSettings) {
+      onPieceSettings(piece);
+    }
+  };
 
   return (
     <div
       ref={fieldRef}
-      className={`relative w-full max-w-4xl mx-auto bg-green-100 border-4 border-green-700 rounded-xl overflow-hidden select-none ${isMobile ? 'aspect-[2/3]' : 'aspect-[3/2]'}`}
-      style={{ touchAction: 'none' }}
+      className={`relative w-full max-w-4xl mx-auto bg-green-100 border-4 border-green-700 rounded-xl overflow-hidden select-none ${
+        isMobile ? "aspect-[2/3]" : "aspect-[3/2]"
+      }`}
+      style={{ touchAction: "none" }}
     >
-      <div className={`absolute ${isMobile ? 'h-1/2 w-full top-1/2 left-0 -translate-y-1/2' : 'left-1/2 top-0 -translate-x-1/2 h-full w-1'} bg-green-700/20`} />
+      <div
+        className={`absolute ${
+          isMobile
+            ? "h-1/2 w-full top-1/2 left-0 -translate-y-1/2"
+            : "left-1/2 top-0 -translate-x-1/2 h-full w-1"
+        } bg-green-700/20`}
+      />
 
       {transformedPieces.map((p) => (
         <motion.div
           key={p.id}
           // Call the stable handleDragStart function stored in the ref
-          onMouseDown={isDraggable ? (e) => dragHandlers.current.handleDragStart(e, p) : undefined}
-          onTouchStart={isDraggable ? (e) => dragHandlers.current.handleDragStart(e, p) : undefined}
-
+          onMouseDown={
+            isDraggable
+              ? (e) => dragHandlers.current.handleDragStart(e, p)
+              : undefined
+          }
+          onTouchStart={
+            isDraggable
+              ? (e) => dragHandlers.current.handleDragStart(e, p)
+              : undefined
+          }
+          onContextMenu={
+            isDraggable ? (e) => handleRightClick(e, p) : undefined
+          }
           // Framer Motion for positional update and animation
           animate={{
             left: `${p.x * 100}%`,
@@ -230,20 +294,32 @@ export default function WhiteboardCanvas({ pieces, targetPositionsById, frameDur
             ...(transformedTargetPositions?.[p.id] && {
               left: `${transformedTargetPositions[p.id].x * 100}%`,
               top: `${transformedTargetPositions[p.id].y * 100}%`,
-            })
+            }),
           }}
           transition={{
             duration: transformedTargetPositions ? frameDurationSec : 0,
             ease: "linear",
           }}
-          className={`absolute rounded-full shadow select-none ${isDraggable ? "cursor-grab" : "cursor-default"}
-          ${p.type === "ball" ? "w-3 h-3 sm:w-[18px] sm:h-[18px]" : "w-4 h-4 sm:w-[26px] sm:h-[26px]"}`}
+          className={`absolute rounded-full shadow select-none ${
+            isDraggable ? "cursor-grab" : "cursor-default"
+          }
+          ${
+            p.type === "ball"
+              ? "w-3 h-3 sm:w-[18px] sm:h-[18px]"
+              : "w-4 h-4 sm:w-[26px] sm:h-[26px]"
+          }`}
           // Base transform is -50% to center the piece
           style={{
-            transform: 'translate(-50%, -50%)', // Base style for centering
+            transform: "translate(-50%, -50%)", // Base style for centering
             backgroundColor: colorMap[p.color] || "transparent",
           }}
-        />
+        >
+          {p.label && (
+            <div className="absolute -bottom-3 sm:-bottom-5 left-1/2 -translate-x-1/2 text-[0.5rem] sm:text-xs font-semibold text-black">
+              {p.label}
+            </div>
+          )}
+        </motion.div>
       ))}
     </div>
   );

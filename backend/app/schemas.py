@@ -42,7 +42,7 @@ class Piece(BaseModel):
     #Potential futue stuff (optional for now)
     rotation: Optional[float] = 0.0  # direction facing (degrees) (good for corner/shut posture)
     size: Optional[float] = 1.0      # scale factor for drawing
-    label: Optional[str] = None      # optional text like "A", "Wing", "Def"
+    label: Optional[str] = Field(None, max_length=7)    # optional text like "A", "Wing", "Def"
     opacity: Optional[float] = 1.0   # for ghosting or highlighting
 
 

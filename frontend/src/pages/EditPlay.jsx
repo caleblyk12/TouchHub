@@ -1,9 +1,9 @@
-// src/pages/EditPlay.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../api/axios";
 import WhiteboardCanvas from "../components/WhiteboardCanvas";
 import ObjectButton from "../components/ObjectButton";
+import PieceSettingsModal from "../components/PieceSettingsModal";
 
 export default function EditPlay() {
   const { id } = useParams();
@@ -12,7 +12,7 @@ export default function EditPlay() {
   const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false); // State for privacy setting
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [frames, setFrames] = useState([{ frame_number: 1, pieces: [] }]);
   const [idx, setIdx] = useState(0);
@@ -20,6 +20,7 @@ export default function EditPlay() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [justStartedPlaying, setJustStartedPlaying] = useState(false);
   const [secondsPerFrame, setSecondsPerFrame] = useState(1);
+  const [selectedPiece, setSelectedPiece] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -27,7 +28,7 @@ export default function EditPlay() {
         const { data } = await api.get(`/plays/${id}`);
         setTitle(data.title);
         setDescription(data.description || "");
-        setIsPrivate(data.is_private || false); // Set initial privacy state
+        setIsPrivate(data.is_private || false);
         const f = data.frame_data?.length
           ? data.frame_data.map((fr, i) => ({
               frame_number: i + 1,
@@ -35,7 +36,8 @@ export default function EditPlay() {
             }))
           : [{ frame_number: 1, pieces: [] }];
         setFrames(f);
-        if (data.frame_data?.[0]?.duration) setSecondsPerFrame(data.frame_data[0].duration);
+        if (data.frame_data?.[0]?.duration)
+          setSecondsPerFrame(data.frame_data[0].duration);
         setLoaded(true);
       } catch {
         alert("Failed to load play");
@@ -44,7 +46,6 @@ export default function EditPlay() {
     })();
   }, [id, navigate]);
 
-  /** Logic for advancing frames during playback. */
   useEffect(() => {
     if (!isPlaying || frames.length <= 1) return;
 
@@ -83,26 +84,32 @@ export default function EditPlay() {
     }, {});
   }, [isPlaying, frames, idx, justStartedPlaying]);
 
-
   function addPiece(kind) {
-    const color = kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
+    const color =
+      kind === "team1"
+        ? "blue"
+        : kind === "team2"
+        ? "red"
+        : kind === "team3"
+        ? "green"
+        : "yellow";
     const type = kind === "ball" ? "ball" : "player";
     const newObj = {
-        id: Math.round(Date.now() + Math.random()),
-        type,
-        color,
-        x: 0.5,
-        y: 0.5,
-        rotation: 0,
-        size: 1,
-        label: null,
-        opacity: 1,
+      id: Math.round(Date.now() + Math.random()),
+      type,
+      color,
+      x: 0.5,
+      y: 0.5,
+      rotation: 0,
+      size: 1,
+      label: null,
+      opacity: 1,
     };
 
     setFrames((prev) => {
       const newFrames = structuredClone(prev);
-      newFrames.forEach(frame => {
-          frame.pieces.push(structuredClone(newObj));
+      newFrames.forEach((frame) => {
+        frame.pieces.push(structuredClone(newObj));
       });
       return newFrames;
     });
@@ -111,7 +118,7 @@ export default function EditPlay() {
   function onPiecePositionChange(id, x, y) {
     setFrames((prev) => {
       const copy = structuredClone(prev);
-      const pieceToUpdate = copy[idx].pieces.find(p => p.id === id);
+      const pieceToUpdate = copy[idx].pieces.find((p) => p.id === id);
       if (pieceToUpdate) {
         pieceToUpdate.x = x;
         pieceToUpdate.y = y;
@@ -122,8 +129,13 @@ export default function EditPlay() {
 
   function addFrame(copyCurrent = true) {
     setFrames((prev) => {
-      const base = copyCurrent ? structuredClone(prev[idx]) : { frame_number: prev.length + 1, pieces: [] };
-      const newFrame = { frame_number: prev.length + 1, pieces: base.pieces ?? [] };
+      const base = copyCurrent
+        ? structuredClone(prev[idx])
+        : { frame_number: prev.length + 1, pieces: [] };
+      const newFrame = {
+        frame_number: prev.length + 1,
+        pieces: base.pieces ?? [],
+      };
       return [...prev, newFrame];
     });
     setIdx((i) => i + 1);
@@ -140,8 +152,12 @@ export default function EditPlay() {
     setIdx((i) => Math.max(0, i - 1));
   }
 
-  function prevFrame() { setIdx((i) => (i - 1 + frames.length) % frames.length); }
-  function nextFrame() { setIdx((i) => (i + 1) % frames.length); }
+  function prevFrame() {
+    setIdx((i) => (i - 1 + frames.length) % frames.length);
+  }
+  function nextFrame() {
+    setIdx((i) => (i + 1) % frames.length);
+  }
 
   async function handleSave() {
     const payload = {
@@ -152,27 +168,63 @@ export default function EditPlay() {
         duration: secondsPerFrame,
         pieces: f.pieces,
       })),
-      is_private: isPrivate, // Include privacy setting in payload
+      is_private: isPrivate,
     };
     await api.put(`/plays/${id}`, payload);
     navigate("/plays/me");
   }
 
-  if (!loaded) return <div className="text-center text-gray-500 mt-10">Loading…</div>;
+  if (!loaded)
+    return <div className="text-center text-gray-500 mt-10">Loading…</div>;
 
+  function handlePieceSettings(piece) {
+    setSelectedPiece(piece);
+  }
+  function handleDeletePiece(pieceId) {
+    setFrames((prev) =>
+      prev.map((frame) => ({
+        ...frame,
+        pieces: frame.pieces.filter((p) => p.id !== pieceId),
+      }))
+    );
+  }
+
+  function handleUpdatePieceLabel(pieceId, label) {
+    setFrames((prev) =>
+      prev.map((frame) => ({
+        ...frame,
+        pieces: frame.pieces.map((p) =>
+          p.id === pieceId ? { ...p, label } : p
+        ),
+      }))
+    );
+  }
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
-      <button 
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-4 w-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
         >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back
-        </button>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 19l-7-7 7-7"
+          />
+        </svg>
+        Back
+      </button>
 
-      <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-blue-700">Edit Play</h2>
+      <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-blue-700">
+        Edit Play
+      </h2>
 
       <input
         type="text"
@@ -191,19 +243,39 @@ export default function EditPlay() {
       />
 
       <div className="grid grid-cols-2 sm:flex gap-2 sm:gap-3 mb-4">
-        <ObjectButton color="blue" label="Team 1" onClick={() => addPiece("team1")} />
-        <ObjectButton color="red" label="Team 2" onClick={() => addPiece("team2")} />
-        <ObjectButton color="green" label="Team 3" onClick={() => addPiece("team3")} />
+        <ObjectButton
+          color="blue"
+          label="Team 1"
+          onClick={() => addPiece("team1")}
+        />
+        <ObjectButton
+          color="red"
+          label="Team 2"
+          onClick={() => addPiece("team2")}
+        />
+        <ObjectButton
+          color="green"
+          label="Team 3"
+          onClick={() => addPiece("team3")}
+        />
         <ObjectButton color="yellow" label="Ball" onClick={() => addPiece("ball")} />
       </div>
-
 
       <WhiteboardCanvas
         pieces={pieces}
         onPositionChange={onPiecePositionChange}
         targetPositionsById={targetPositionsById}
         frameDurationSec={secondsPerFrame}
+        onPieceSettings={handlePieceSettings}
       />
+      {selectedPiece && (
+        <PieceSettingsModal
+          piece={selectedPiece}
+          onClose={() => setSelectedPiece(null)}
+          onDelete={handleDeletePiece}
+          onSave={handleUpdatePieceLabel}
+        />
+      )}
 
       <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
@@ -214,7 +286,9 @@ export default function EditPlay() {
           >
             ◀ Prev
           </button>
-          <div className="px-3 py-2 rounded-lg bg-gray-100 text-xs sm:text-sm">Frame <b>{idx + 1}</b> / {frames.length}</div>
+          <div className="px-3 py-2 rounded-lg bg-gray-100 text-xs sm:text-sm">
+            Frame <b>{idx + 1}</b> / {frames.length}
+          </div>
           <button
             onClick={nextFrame}
             className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
@@ -225,8 +299,19 @@ export default function EditPlay() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={() => addFrame(true)} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base">+ New Frame</button>
-          <button onClick={deleteFrame} className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm sm:text-base" disabled={frames.length === 1}>Delete</button>
+          <button
+            onClick={() => addFrame(true)}
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base"
+          >
+            + New Frame
+          </button>
+          <button
+            onClick={deleteFrame}
+            className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm sm:text-base"
+            disabled={frames.length === 1}
+          >
+            Delete
+          </button>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -234,11 +319,15 @@ export default function EditPlay() {
             onClick={() => setIsPlaying((p) => !p)}
             className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 w-full sm:w-auto text-sm sm:text-base"
             disabled={frames.length < 2}
-            title={frames.length < 2 ? "Add at least 2 frames to play" : ""}
+            title={
+              frames.length < 2 ? "Add at least 2 frames to play" : ""
+            }
           >
             {isPlaying ? "Pause" : "Play"}
           </button>
-          <label className="text-xs sm:text-sm text-gray-700">Sec/frame</label>
+          <label className="text-xs sm:text-sm text-gray-700">
+            Sec/frame
+          </label>
           <select
             className="border rounded-lg px-2 py-1 text-xs sm:text-sm"
             value={secondsPerFrame}
@@ -253,16 +342,35 @@ export default function EditPlay() {
         </div>
       </div>
 
-      {/* Privacy Toggle */}
       <div className="mt-8 flex items-center justify-start gap-3">
-        <label htmlFor="privacy-toggle" className="flex items-center cursor-pointer">
+        <label
+          htmlFor="privacy-toggle"
+          className="flex items-center cursor-pointer"
+        >
           <div className="relative">
-            <input type="checkbox" id="privacy-toggle" className="sr-only" checked={isPrivate} onChange={() => setIsPrivate(!isPrivate)} />
-            <div className={`block w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors ${isPrivate ? 'bg-blue-600' : 'bg-gray-400'}`}></div>
-            <div className={`dot absolute left-1 top-1 bg-white w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-transform ${isPrivate ? 'transform translate-x-full' : ''}`}></div>
+            <input
+              type="checkbox"
+              id="privacy-toggle"
+              className="sr-only"
+              checked={isPrivate}
+              onChange={() => setIsPrivate(!isPrivate)}
+            />
+            <div
+              className={`block w-12 h-7 sm:w-14 sm:h-8 rounded-full transition-colors ${
+                isPrivate ? "bg-blue-600" : "bg-gray-400"
+              }`}
+            ></div>
+            <div
+              className={`dot absolute left-1 top-1 bg-white w-5 h-5 sm:w-6 sm:h-6 rounded-full transition-transform ${
+                isPrivate ? "transform translate-x-full" : ""
+              }`}
+            ></div>
           </div>
           <div className="ml-3 text-sm sm:text-base text-gray-700 font-medium">
-            Private Play <span className="hidden sm:inline text-sm text-gray-500 font-normal">(only you can see it)</span>
+            Private Play{" "}
+            <span className="hidden sm:inline text-sm text-gray-500 font-normal">
+              (only you can see it)
+            </span>
           </div>
         </label>
       </div>
