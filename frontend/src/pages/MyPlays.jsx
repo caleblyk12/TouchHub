@@ -64,13 +64,9 @@ export default function MyPlays() {
 
       {isLoading ? (
         <div className="text-center text-gray-500">Loading plays...</div>
-      ) : plays.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow p-6 text-gray-500 text-center">
-          You haven’t created any plays yet. Get started by creating one!
-        </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Create New Play Card */}
+          {/* Create New Play Card: Always visible when loaded */}
           <Link
             to="/plays/create"
             className="bg-white rounded-xl shadow p-4 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-300 hover:border-blue-500 hover:text-blue-600 transition group min-h-[140px]"
@@ -79,7 +75,7 @@ export default function MyPlays() {
             <span className="font-semibold text-gray-600 group-hover:text-blue-600">Create New Play</span>
           </Link>
 
-          {/* Existing Play Cards */}
+          {/* Existing Play Cards: Renders if plays.length > 0, otherwise nothing */}
           {plays.map((p) => (
             <div
               key={p.id}
