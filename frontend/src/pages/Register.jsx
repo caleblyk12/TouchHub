@@ -12,6 +12,17 @@ export default function Register() {
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
+
+    if (form.username.length > 15) {
+      setError("Username must be 15 characters or less.");
+      return;
+    }
+    if (/\s/.test(form.username)) {
+      setError("Username cannot contain spaces.");
+      return;
+    }
+
+
     setIsLoading(true);
     try {
       await register(form);

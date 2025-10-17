@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List
 
 
@@ -20,6 +20,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
+    username: str = Field(..., max_length=15, pattern=r"^\S*$") # No spaces allowed
     password: str #only appear in create, NOT in userOut response to hide pw
     email: EmailStr
     
