@@ -5,7 +5,7 @@ export default function Home() {
         Welcome to TouchHub
       </h1>
       <p className="text-gray-700 text-base sm:text-lg mb-6 max-w-md leading-relaxed">
-        Create, visualize, and share your Touch Rugby plays with teammates and coaches.
+        Create, visualize, and share your plays with teammates and coaches.
       </p>
       <p className="text-gray-500 text-sm">Use the navigation menu above to get started.</p>
       <br></br>

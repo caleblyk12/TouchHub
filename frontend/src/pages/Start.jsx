@@ -13,7 +13,7 @@ export default function Start() {
 
       {/* Tagline text - smaller and responsive */}
       <p className="text-gray-700 text-sm sm:text-base max-w-md mb-8 sm:mb-10 leading-relaxed"> {/* Smaller text, adjusted bottom margin */}
-        Plan, animate, and share your Touch Rugby plays — all in one place.
+        Play visualisation and sharing, made quick, simple and portable
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
