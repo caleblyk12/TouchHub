@@ -9,6 +9,19 @@ import { useMotionValue, animate } from "framer-motion";
 const lerp = (a, b, t) => a + (b - a) * t;
 const epsilon = 0.001; // Small tolerance for floating point comparison
 
+// SVG Icons for Frame Navigation
+const PrevIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+  </svg>
+);
+
+const NextIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+  </svg>
+);
+
 
 export default function PlayDetails() {
   const { id } = useParams();
@@ -140,8 +153,8 @@ export default function PlayDetails() {
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg> Back </button>
 
-      <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">{play.title}</h2> {/* Title Size */}
-      {play.description && <p className="text-gray-600 mt-2 mb-4 text-xs sm:text-base">{play.description}</p>} {/* Description Size */}
+      <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">{play.title}</h2> {/* Reverted Title Size */}
+      {play.description && <p className="text-gray-600 mt-2 mb-4 text-sm sm:text-base">{play.description}</p>} {/* Reverted Description Size */}
 
       <WhiteboardCanvas pieces={interpolatedPieces} /* No editing props */ />
 
@@ -184,7 +197,7 @@ export default function PlayDetails() {
               className="flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
               disabled={isPlaying}
             >
-              ◀ Frame {/* Kept original text */}
+              <PrevIcon /> Frame {/* Added Icon */}
             </button>
             <button
               onClick={() => {
@@ -195,7 +208,7 @@ export default function PlayDetails() {
               className="flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
               disabled={isPlaying}
             >
-              Frame ▶ {/* Kept original text */}
+              Frame <NextIcon /> {/* Added Icon */}
             </button>
           </div>
 
@@ -204,7 +217,7 @@ export default function PlayDetails() {
           <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-3 pt-2 sm:pt-0 w-full sm:w-auto order-2 sm:order-3"> {/* justify-start sm:justify-center */}
             <button
               onClick={handlePlayToggle}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm sm:text-base"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm sm:text-base" // Reverted Font Size
               disabled={frames.length < 2}
             >
               {isPlaying ? "Pause" : "Play"}
