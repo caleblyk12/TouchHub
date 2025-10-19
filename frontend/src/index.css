@@ -5,3 +5,24 @@
 body {
   @apply bg-gray-50 text-gray-800;
 }
+
+/* Custom styles for the timeline slider */
+.timeline-slider {
+  @apply w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer disabled:opacity-50 relative align-middle;
+  /* Ensure background covers the whole track using a CSS variable */
+  background: linear-gradient(to right, #2563eb 0%, #2563eb var(--progress, 0%), #d1d5db var(--progress, 0%), #d1d5db 100%);
+}
+
+/* Thumb styles */
+.timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  /* Make thumb slightly larger than knob for easier grabbing */
+  @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer relative z-10; /* z-10 is sufficient now */
+  transition: background-color 0.1s ease-in-out;
+}
+.timeline-slider::-moz-range-thumb {
+   @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer border-none relative z-10; /* z-10 is sufficient now */
+   transition: background-color 0.1s ease-in-out;
+}
+
+/* Removed frame-knobs-container and frame-knob styles */
