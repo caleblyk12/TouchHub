@@ -13,7 +13,7 @@ const colorMap = {
 // Base sizes (adjust as needed)
 const baseBallSize = { w: '18px', h: '18px', labelOffset: '-bottom-5' }; // sm:w-[18px] sm:h-[18px]
 const basePlayerSize = { w: '26px', h: '26px', labelOffset: '-bottom-5' }; // sm:w-[26px] sm:h-[26px]
-const mobileScaleFactor = 0.65; // Make pieces smaller on mobile (approx 0.75 of original desktop base)
+const mobileScaleFactor = 0.5; // Make pieces smaller on mobile 
 
 function clamp(v) {
   return Math.max(0, Math.min(1, v));

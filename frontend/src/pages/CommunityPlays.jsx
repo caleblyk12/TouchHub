@@ -45,8 +45,8 @@ export default function CommunityPlays() {
               to={`/plays/${p.id}`}
               className="block bg-white rounded-xl shadow p-4 hover:bg-blue-50 transition min-h-[100px] overflow-hidden"
             >
-              <h3 className="text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3>
-              <p className="text-sm text-gray-500 truncate text-center">{p.description}</p>
+              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate text-center">{p.title}</h3> {/* Title Size */}
+              <p className="text-[10px] sm:text-sm text-gray-500 truncate text-center">{p.description}</p> {/* Description Size (using text-[10px] for even smaller mobile) */}
               <p className="text-xs text-gray-400 truncate text-center mt-2">Publisher: {p.owner.username}</p>
             </Link>
           ))}
