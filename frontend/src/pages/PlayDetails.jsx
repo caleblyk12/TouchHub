@@ -9,17 +9,19 @@ import { useMotionValue, animate } from "framer-motion";
 const lerp = (a, b, t) => a + (b - a) * t;
 const epsilon = 0.001; // Small tolerance for floating point comparison
 
-// SVG Icons for Frame Navigation
+// Feather Icons Skip Back/Forward (Blue)
 const PrevIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline mr-1 text-blue-600 h-5 w-5">
+        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+        <line x1="5" y1="19" x2="5" y2="5"></line>
+    </svg>
 );
 
 const NextIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-  </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="inline ml-1 text-blue-600 h-5 w-5">
+        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+        <line x1="19" y1="5" x2="19" y2="19"></line>
+    </svg>
 );
 
 
@@ -153,8 +155,8 @@ export default function PlayDetails() {
     <div className="max-w-5xl mx-auto px-4 py-8 sm:py-12">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-700 font-semibold mb-4"> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg> Back </button>
 
-      <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">{play.title}</h2> {/* Reverted Title Size */}
-      {play.description && <p className="text-gray-600 mt-2 mb-4 text-sm sm:text-base">{play.description}</p>} {/* Reverted Description Size */}
+      <h2 className="text-2xl sm:text-3xl font-bold text-blue-700">{play.title}</h2>
+      {play.description && <p className="text-gray-600 mt-2 mb-4 text-sm sm:text-base">{play.description}</p>}
 
       <WhiteboardCanvas pieces={interpolatedPieces} /* No editing props */ />
 
@@ -194,10 +196,10 @@ export default function PlayDetails() {
                   animationProgress.set(targetIdx);
                   updateInterpolatedPieces(targetIdx); // Update visuals immediately
               }}
-              className="flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
+              className="flex items-center justify-center flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base font-semibold"
               disabled={isPlaying}
             >
-              <PrevIcon /> Frame {/* Added Icon */}
+              <PrevIcon /> Frame {/* Updated Icon */}
             </button>
             <button
               onClick={() => {
@@ -205,19 +207,18 @@ export default function PlayDetails() {
                   animationProgress.set(targetIdx);
                   updateInterpolatedPieces(targetIdx); // Update visuals immediately
               }}
-              className="flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base"
+              className="flex items-center justify-center flex-1 sm:flex-none px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-sm sm:text-base font-semibold"
               disabled={isPlaying}
             >
-              Frame <NextIcon /> {/* Added Icon */}
+              Frame <NextIcon /> {/* Updated Icon */}
             </button>
           </div>
 
           {/* Middle: Play/Speed - Second row on mobile, left aligned */}
-          {/* order-2 on mobile, order-3 on desktop */}
-          <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-3 pt-2 sm:pt-0 w-full sm:w-auto order-2 sm:order-3"> {/* justify-start sm:justify-center */}
+          <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-3 pt-2 sm:pt-0 w-full sm:w-auto order-2 sm:order-3">
             <button
               onClick={handlePlayToggle}
-              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm sm:text-base" // Reverted Font Size
+              className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-sm sm:text-base font-semibold"
               disabled={frames.length < 2}
             >
               {isPlaying ? "Pause" : "Play"}
@@ -234,8 +235,7 @@ export default function PlayDetails() {
           </div>
 
           {/* Right: Edit Button - Last on mobile, middle on desktop */}
-           {/* order-3 on mobile, order-2 on desktop */}
-          <div className="flex items-center w-full sm:w-auto justify-end order-3 sm:order-2"> {/* Container to push edit button right */}
+          <div className="flex items-center w-full sm:w-auto justify-end order-3 sm:order-2">
               {isOwner && (
                 <Link
                   to={`/plays/${id}/edit`}
