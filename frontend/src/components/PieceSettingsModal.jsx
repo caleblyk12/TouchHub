@@ -107,7 +107,7 @@ export default function PieceSettingsModal({
             onClick={handleDelete}
             className="px-3 sm:px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition duration-150 ease-in-out"
           >
-            Delete
+            Delete Piece
           </button>
           <button
             onClick={handleSave}
