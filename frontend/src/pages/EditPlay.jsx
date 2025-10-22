@@ -53,7 +53,8 @@ export default function EditPlay() {
         const f = data.frame_data?.length
           ? data.frame_data.map((fr, i) => ({
               frame_number: i + 1,
-              pieces: (fr.pieces || []).map(p => ({...p, size: p.size || 1.0 })),
+              // Ensure size defaults to 1.0 and opacity to 1.0 if missing from loaded data
+              pieces: (fr.pieces || []).map(p => ({...p, size: p.size || 1.0, opacity: p.opacity !== undefined ? p.opacity : 1.0 })),
             }))
           : [{ frame_number: 1, pieces: [] }];
         setFrames(f);
@@ -89,7 +90,8 @@ export default function EditPlay() {
         const newPieces = currentPieces.map((p1) => {
             const p2 = nextPiecesById.get(p1.id);
             if (!p2) return p1;
-            return { ...p1, x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t), size: p1.size };
+            // Carry over size and opacity during interpolation
+            return { ...p1, x: lerp(p1.x, p2.x, t), y: lerp(p1.y, p2.y, t), size: p1.size, opacity: p1.opacity };
         });
         setInterpolatedPieces(newPieces);
     },
@@ -123,19 +125,30 @@ export default function EditPlay() {
 
   function addPiece(kind) {
      const color =
-      kind === "team1" ? "blue" : kind === "team2" ? "red" : kind === "team3" ? "green" : "yellow";
-    const type = kind === "ball" ? "ball" : "player";
+      kind === "team1" ? "blue" 
+      : kind === "team2" ? "red" 
+      : kind === "team3" ? "green" 
+      : kind === "team4" ? "purple" // New Team 4
+      : "yellow"; // Default for 'ball' or 'cone'
+    
+    const type = kind === "cone" ? "cone" : (kind === "ball" ? "ball" : "player"); // New cone type
+    
     const newObj = {
       id: Math.round(Date.now() + Math.random()), type, color, x: 0.5, y: 0.5,
-      rotation: 0, size: 1.0, label: null, opacity: 1, // Add default size
+      rotation: 0, size: 1.0, label: null, opacity: 1.0, // Default opacity 1.0
     };
+
+    const currentIdx = Math.round(animationProgress.get()); // Get current frame index
+    
     setFrames((prev) => {
       const newFrames = structuredClone(prev);
-      newFrames.forEach((frame) => { frame.pieces.push(structuredClone(newObj)); });
-      const currentIdx = Math.round(animationProgress.get());
-       if (newFrames[currentIdx]) {
-          setInterpolatedPieces(newFrames[currentIdx].pieces);
+      
+      // ONLY add to the current frame
+      if (newFrames[currentIdx]) {
+          newFrames[currentIdx].pieces.push(structuredClone(newObj)); 
+          setInterpolatedPieces(newFrames[currentIdx].pieces); // Update visuals immediately
       }
+      
       return newFrames;
     });
   }
@@ -208,7 +221,7 @@ export default function EditPlay() {
       frame_data: frames.map((f, i) => ({
           frame_number: i + 1,
           duration: 1 / fps,
-          pieces: f.pieces.map(p => ({...p, size: p.size || 1.0 })) // Ensure size defaults to 1.0
+          pieces: f.pieces.map(p => ({...p, size: p.size || 1.0, opacity: p.opacity !== undefined ? p.opacity : 1.0 })) // Ensure size/opacity defaults are saved
       })),
       is_private: isPrivate,
     };
@@ -220,34 +233,46 @@ export default function EditPlay() {
     return <div className="text-center text-gray-500 mt-10">Loading…</div>;
 
   function handlePieceSettings(piece) { setSelectedPiece(piece); }
+  
   function handleDeletePiece(pieceId) {
+    const currentFrameIdx = Math.round(animationProgress.get()); // Get current frame index
     setFrames((prev) => {
-       const newFrames = prev.map((frame) => ({ ...frame, pieces: frame.pieces.filter((p) => p.id !== pieceId) }));
-       const currentIdx = Math.round(animationProgress.get());
-       if (newFrames[currentIdx]) {
-           setInterpolatedPieces(newFrames[currentIdx].pieces);
+       const newFrames = structuredClone(prev); // Must clone to modify frame-by-frame
+       
+       // ONLY delete from the current frame
+       if (newFrames[currentFrameIdx]) {
+           newFrames[currentFrameIdx].pieces = newFrames[currentFrameIdx].pieces.filter((p) => p.id !== pieceId);
+           setInterpolatedPieces(newFrames[currentFrameIdx].pieces); // Update visuals immediately
        }
+
        return newFrames;
     });
   }
 
-  function handleUpdatePieceSettings(pieceId, label, size) {
+  function handleUpdatePieceSettings(pieceId, label, size, opacity) {
+      const currentFrameIdx = Math.round(animationProgress.get()); // Get the index of the current frame
       setFrames((prev) => {
-      const newFrames = prev.map((frame) => ({
-        ...frame,
-        pieces: frame.pieces.map((p) =>
-          p.id === pieceId ? { ...p, label, size } : p
-        ),
-      }));
-       const currentIdx = Math.round(animationProgress.get());
-       if (newFrames[currentIdx]) {
-           const updatedPiece = newFrames[currentIdx].pieces.find(p => p.id === pieceId);
+      const newFrames = prev.map((frame, i) => {
+        if (i === currentFrameIdx) { // Only update the current frame's pieces array
+            return {
+                ...frame,
+                pieces: frame.pieces.map((p) =>
+                    p.id === pieceId ? { ...p, label, size, opacity } : p // Apply frame-specific settings
+                ),
+            };
+        }
+        return frame; // Return all other frames as is
+      });
+       
+       // Update visual representation immediately
+       if (newFrames[currentFrameIdx]) {
+           const updatedPiece = newFrames[currentFrameIdx].pieces.find(p => p.id === pieceId);
            if (updatedPiece) {
                setInterpolatedPieces(currentPieces =>
                    currentPieces.map(cp => cp.id === pieceId ? updatedPiece : cp)
                );
            } else {
-               setInterpolatedPieces(newFrames[currentIdx].pieces);
+               setInterpolatedPieces(newFrames[currentFrameIdx].pieces);
            }
        }
        return newFrames;
@@ -264,11 +289,14 @@ export default function EditPlay() {
       <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 text-blue-700"> Edit Play </h2>
       <input type="text" placeholder="Play title…" className="border rounded-lg w-full p-2 sm:p-3 mb-4 text-base sm:text-lg focus:ring-2 focus:ring-blue-500" value={title} onChange={(e) => setTitle(e.target.value)} />
       <textarea placeholder="Add a description (optional)..." className="border rounded-lg w-full p-2 sm:p-3 mb-4 text-sm sm:text-lg focus:ring-2 focus:ring-blue-500" value={description} onChange={(e) => setDescription(e.target.value)} rows="2" />
-       <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4">
+       {/* Updated Object Buttons for cone and team 4 - Now 3 columns on mobile */}
+       <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 sm:gap-3 mb-4">
         <ObjectButton color="blue" label="Team 1" onClick={() => addPiece("team1")}/>
         <ObjectButton color="red" label="Team 2" onClick={() => addPiece("team2")}/>
         <ObjectButton color="green" label="Team 3" onClick={() => addPiece("team3")}/>
+        <ObjectButton color="purple" label="Team 4" onClick={() => addPiece("team4")} /> {/* New Team 4 */}
         <ObjectButton color="yellow" label="Ball" onClick={() => addPiece("ball")} />
+        <ObjectButton color="yellow" label="Cone" onClick={() => addPiece("cone")} /> {/* New Cone (Yellow) */}
       </div>
 
       <WhiteboardCanvas

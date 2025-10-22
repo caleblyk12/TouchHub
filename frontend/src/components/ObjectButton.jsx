@@ -4,6 +4,7 @@ const colorClass = {
   red: "bg-red-600 hover:bg-red-700 text-white",
   green: "bg-green-600 hover:bg-green-700 text-white",
   yellow: "bg-amber-500 hover:bg-amber-600 text-black",
+  purple: "bg-fuchsia-600 hover:bg-fuchsia-700 text-white", // Changed to Fuchsia for better distinction from blue
 };
 
 export default function ObjectButton({ color, label, onClick }) {
@@ -17,4 +18,3 @@ export default function ObjectButton({ color, label, onClick }) {
     </button>
   );
 }
-

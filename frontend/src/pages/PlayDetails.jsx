@@ -48,8 +48,8 @@ export default function PlayDetails() {
         const f = data.frame_data?.length
           ? data.frame_data.map((fr, i) => ({
               frame_number: i + 1,
-              // Ensure size defaults to 1.0 if missing from loaded data
-              pieces: (fr.pieces || []).map(p => ({...p, size: p.size || 1.0 })),
+              // Ensure size defaults to 1.0 and opacity to 1.0 if missing from loaded data
+              pieces: (fr.pieces || []).map(p => ({...p, size: p.size || 1.0, opacity: p.opacity !== undefined ? p.opacity : 1.0 })),
             }))
           : [{ frame_number: 1, pieces: [] }];
         setFrames(f);
@@ -95,12 +95,13 @@ export default function PlayDetails() {
         // If piece doesn't exist in next frame, just hold its position
         if (!p2) return p1;
 
-        // Return the new, interpolated piece, carrying over size
+        // Return the new, interpolated piece, carrying over size and opacity
         return {
           ...p1,
           x: lerp(p1.x, p2.x, t),
           y: lerp(p1.y, p2.y, t),
-          size: p1.size // Ensure size is carried over
+          size: p1.size, // Ensure size is carried over
+          opacity: p1.opacity // Ensure opacity is carried over
         };
       });
 

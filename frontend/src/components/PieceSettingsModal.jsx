@@ -17,22 +17,24 @@ export default function PieceSettingsModal({
   piece,
   onClose,
   onDelete,
-  onSave, // Expects onSave(pieceId, label, size)
+  onSave, // Expects onSave(pieceId, label, size, opacity)
 }) {
   const [label, setLabel] = useState(piece?.label || "");
   const [sizeLabel, setSizeLabel] = useState(() => sizeValueToLabel(piece?.size));
+  const [opacity, setOpacity] = useState(piece?.opacity !== undefined ? piece.opacity : 1.0); // New state
 
   // Update state if the piece prop changes (e.g., opening modal for a different piece)
   useEffect(() => {
     setLabel(piece?.label || "");
     setSizeLabel(sizeValueToLabel(piece?.size));
+    setOpacity(piece?.opacity !== undefined ? piece.opacity : 1.0); // Initialize opacity
   }, [piece]);
 
   if (!piece) return null;
 
   function handleSave() {
-    // Pass label and the numeric size value
-    onSave(piece.id, label, sizeMap[sizeLabel]);
+    // Pass label, numeric size value, and opacity
+    onSave(piece.id, label, sizeMap[sizeLabel], opacity);
     onClose();
   }
 
@@ -98,6 +100,23 @@ export default function PieceSettingsModal({
                 </label>
               ))}
             </div>
+          </div>
+
+          {/* Opacity Slider - NEW */}
+          <div>
+            <label htmlFor={`piece-opacity-${piece.id}`} className="block text-sm font-medium text-gray-700 mb-1">
+              Opacity ({Math.round(opacity * 100)}%)
+            </label>
+            <input
+              id={`piece-opacity-${piece.id}`}
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={opacity}
+              onChange={(e) => setOpacity(Number(e.target.value))}
+              className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer range-lg"
+            />
           </div>
         </div>
 

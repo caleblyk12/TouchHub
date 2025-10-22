@@ -8,11 +8,13 @@ const colorMap = {
   red: "#dc2626",
   green: "#16a34a",
   yellow: "#f59e0b",
+  purple: "#c026d3", // New Team 4 color (Fuchsia-600 equivalent)
 };
 
 // Base sizes (adjust as needed)
 const baseBallSize = { w: '18px', h: '18px', labelOffset: '-bottom-5' }; // sm:w-[18px] sm:h-[18px]
 const basePlayerSize = { w: '26px', h: '26px', labelOffset: '-bottom-5' }; // sm:w-[26px] sm:h-[26px]
+const baseConeSize = { w: '20px', h: '20px', labelOffset: '-bottom-6' }; // Adjusted cone size for visibility as triangle
 const mobileScaleFactor = 0.5; // Make pieces smaller on mobile 
 
 function clamp(v) {
@@ -88,6 +90,7 @@ export default function WhiteboardCanvas({
       const dy = clientY - initialClientY;
 
       // Apply the movement directly using CSS transform (visual update ONLY)
+      // The `translate(-50%, -50%)` is for centering the piece.
       element.style.transform = `translate(${dx}px, ${dy}px) translate(-50%, -50%)`;
 
     };
@@ -119,7 +122,7 @@ export default function WhiteboardCanvas({
         // Call the final commit handler
         currentHandlers.onPositionChange(id, finalX, finalY);
       }
-       // Reset the element's transform regardless of whether onPositionChange was called
+       // Reset the element's transform
        element.style.transform = "translate(-50%, -50%)";
 
       element.classList.remove("dragging-piece");
@@ -210,24 +213,59 @@ export default function WhiteboardCanvas({
 
   // Helper to calculate size based on type, size prop, and mobile status
   const getPieceStyle = (piece) => {
-    const baseSize = piece.type === 'ball' ? baseBallSize : basePlayerSize;
+    let baseSize;
+    if (piece.type === 'ball') {
+      baseSize = baseBallSize;
+    } else if (piece.type === 'cone') {
+      baseSize = baseConeSize;
+    } else {
+      baseSize = basePlayerSize;
+    }
+
     // Apply mobile scale factor *before* applying the piece's size setting
     const scale = (piece.size || 1.0) * (isMobile ? mobileScaleFactor : 1.0);
-    // Use calc() for dynamic sizing based on scale
-    return {
+    
+    const style = {
         width: `calc(${baseSize.w} * ${scale})`,
         height: `calc(${baseSize.h} * ${scale})`,
-        transform: "translate(-50%, -50%)", // Keep centering transform
-        backgroundColor: colorMap[piece.color] || "transparent",
+        transform: "translate(-50%, -50%)", // Base centering transform
+        opacity: piece.opacity !== undefined ? piece.opacity : 1.0, // Apply Opacity
     };
+
+    if (piece.type === 'cone') {
+        // Cone visual: a triangle pointing up
+        style.backgroundColor = colorMap[piece.color] || "#d97706";
+        style.clipPath = 'polygon(50% 0%, 0% 100%, 100% 100%)';
+        style.borderRadius = '0'; 
+        style.boxShadow = 'none';
+        style.color = '#000000'; // Ensure label text is black
+    } else {
+        // Player and Ball remain circles
+        style.backgroundColor = colorMap[piece.color] || "transparent";
+        style.borderRadius = '9999px'; // rounded-full
+        style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1)'; // shadow
+    }
+
+    return style;
   };
    // Helper to get label offset class
    const getLabelOffsetClass = (piece) => {
        // Also consider mobile scale here for positioning the label correctly relative to the piece size
        const scale = (piece.size || 1.0) * (isMobile ? mobileScaleFactor : 1.0);
-       if (scale < 0.7) return "-bottom-2 sm:-bottom-3"; // Closer for smaller pieces
-       if (scale > 1.2) return "-bottom-4 sm:-bottom-6"; // Further for larger pieces
-       return "-bottom-3 sm:-bottom-5"; // Default adjusted slightly
+       let baseOffset;
+
+       if (piece.type === 'cone') {
+           baseOffset = baseConeSize.labelOffset;
+       } else if (piece.type === 'ball') {
+           baseOffset = baseBallSize.labelOffset;
+       } else {
+           baseOffset = basePlayerSize.labelOffset;
+       }
+
+       // Simplified scaling for label offset to keep it reasonable
+       if (scale < 0.7) return "-bottom-2 sm:-bottom-3";
+       if (scale > 1.2) return "-bottom-4 sm:-bottom-6";
+       return "-bottom-3 sm:-bottom-5"; 
    }
 
 
@@ -273,11 +311,11 @@ export default function WhiteboardCanvas({
             duration: 0.05, // Keep short duration for smoothness between updates
             ease: "linear",
           }}
-          className={`absolute rounded-full shadow select-none ${
+          className={`absolute select-none ${
             isDraggable ? "cursor-grab" : "cursor-default"
           } dragging-piece:cursor-grabbing dragging-piece:z-10
-          `} // Removed specific width/height classes
-          // Apply dynamic style for size
+          `} // Removed hardcoded rounded-full and shadow classes
+          // Apply dynamic style for size, shape, color, and opacity
           style={getPieceStyle(p)}
         >
            {p.label && (
