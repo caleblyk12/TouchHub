@@ -286,22 +286,48 @@ export default function CreatePlay() {
 
       {/* --- UPDATED Controls Section --- */}
       <div className="mt-6 space-y-4">
-          {/* Row 1: Slider (No Knobs) */}
+          {/* Row 1: Slider (with Knobs) */}
           <div className="flex items-center gap-3">
               <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
                   Frame {Math.floor(sliderValue) + 1} / {frames.length}
               </span>
-              <input
-                  type="range" min="0" max={frames.length > 1 ? frames.length - 1 : 0} step={0.01} value={sliderValue}
-                  onChange={(e) => {
-                      if (isPlaying) { animationProgress.stop(); setIsPlaying(false); }
-                      const val = Number(e.target.value);
-                      animationProgress.set(val);
-                      updateInterpolatedPieces(val);
-                  }}
-                  disabled={frames.length < 2} className="timeline-slider w-full"
-                  style={{ '--progress': `${sliderProgressPercent}%` }} title="Scrub through animation"
-              />
+              
+              {/* Container for slider and knobs */}
+              <div className="relative w-full align-middle">
+                  <input
+                      type="range" min="0" max={frames.length > 1 ? frames.length - 1 : 0} step={0.01} value={sliderValue}
+                      onChange={(e) => {
+                          if (isPlaying) { animationProgress.stop(); setIsPlaying(false); }
+                          const val = Number(e.target.value);
+                          animationProgress.set(val);
+                          updateInterpolatedPieces(val);
+                      }}
+                      disabled={frames.length < 2} className="timeline-slider w-full"
+                      style={{ '--progress': `${sliderProgressPercent}%` }} title="Scrub through animation"
+                  />
+
+                  {/* NEW: Frame Knobs Container */}
+                  {frames.length > 1 && (
+                      <div className="frame-knobs-container">
+                          {frames.map((frame, index) => {
+                              // sliderValue is 0 for frame 1 (index 0), 1 for frame 2 (index 1)
+                              // A knob is 'passed' if the sliderValue is >= its index.
+                              const isPassed = sliderValue >= index;
+                              
+                              // Calculate position for each knob
+                              const percent = (index / (frames.length - 1)) * 100;
+                              
+                              return (
+                                  <div
+                                      key={frame.frame_number || index}
+                                      className={`frame-knob ${isPassed ? "passed" : ""}`}
+                                      style={{ left: `${percent}%` }}
+                                  />
+                              );
+                          })}
+                      </div>
+                  )}
+              </div>
           </div>
 
           {/* Row 2: Buttons - Responsive Layout */}

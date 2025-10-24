@@ -16,13 +16,43 @@ body {
 /* Thumb styles */
 .timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
-  /* Make thumb slightly larger than knob for easier grabbing */
-  @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer relative z-10; /* z-10 is sufficient now */
+  /* w-4 h-4 => 1rem / 16px */
+  @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer relative z-10;
   transition: background-color 0.1s ease-in-out;
 }
 .timeline-slider::-moz-range-thumb {
-   @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer border-none relative z-10; /* z-10 is sufficient now */
+   /* w-4 h-4 => 1rem / 16px */
+   @apply w-4 h-4 bg-blue-600 rounded-full cursor-pointer border-none relative z-10;
    transition: background-color 0.1s ease-in-out;
 }
 
-/* Removed frame-knobs-container and frame-knob styles */
+/* --- Styles for Frame Knobs --- */
+.frame-knobs-container {
+  /* This container spans the height, sitting behind the slider thumb */
+  /* Position inset by half the thumb width (8px) for alignment */
+  @apply absolute top-0 bottom-0 flex items-center pointer-events-none;
+  left: 8px;  /* Half of w-4 (16px) */
+  right: 8px; /* Half of w-4 (16px) */
+}
+
+.frame-knob {
+  @apply absolute bg-gray-300 rounded-full border-2 border-white transition-colors duration-100 ease-in-out;
+  /* Centered on its 'left' percentage relative to the inset container */
+  transform: translate(-50%, -50%);
+  top: 50%; 
+  
+  /* Responsive Sizing */
+  width: 10px;  /* Mobile size */
+  height: 10px; /* Mobile size */
+  z-index: 1; /* Sit above the track gradient but below the thumb (which is z-10) */
+}
+@screen sm {
+  .frame-knob {
+    width: 12px;  /* PC size */
+    height: 12px; /* PC size */
+  }
+}
+
+.frame-knob.passed {
+  @apply bg-blue-600; /* Same as progress bar blue */
+}
